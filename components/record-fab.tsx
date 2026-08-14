@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { haptic } from '@/lib/haptics';
+import { useAppTheme } from '@/lib/theme';
 import { parseNote } from '@/lib/parser';
 import { useBudget } from '@/lib/store';
 
@@ -33,8 +35,10 @@ async function loadModule(): Promise<SRModule | null> {
  * straight into the budget — no text field needed.
  */
 export function RecordFab() {
-  const { addTransaction, addNote, money } = useBudget();
+  const { addTransaction, addNote, money, hapticsEnabled } = useBudget();
   const { showToast } = useToast();
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState<{ message: string; tone: 'ok' | 'error' | 'info' } | null>(null);
   const pulse = useRef(new Animated.Value(0)).current;
@@ -137,12 +141,14 @@ export function RecordFab() {
       return;
     }
     if (listening) {
+      haptic('selection', hapticsEnabled);
       try {
         module.stop();
       } catch {}
       setListening(false);
       return;
     }
+    haptic('medium', hapticsEnabled);
     setStatus(null);
     setListening(true);
     showStatus('Listening… say it!', 'info');
@@ -182,10 +188,10 @@ export function RecordFab() {
   const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] });
   const statusColor =
     status?.tone === 'ok'
-      ? Palette.leafDeep
+      ? palette.leafDeep
       : status?.tone === 'error'
-        ? Palette.coral
-        : Palette.skyDeep;
+        ? palette.coral
+        : palette.skyDeep;
 
   return (
     <View style={styles.wrap}>
@@ -208,7 +214,7 @@ export function RecordFab() {
             listening && styles.fabListening,
             pressed && styles.pressed,
           ]}>
-          <IconSymbol name="mic.fill" size={30} color={listening ? '#FFFFFF' : Palette.surface} />
+          <IconSymbol name="mic.fill" size={30} color={listening ? '#FFFFFF' : palette.surface} />
         </Pressable>
       </View>
       {status ? (
@@ -222,57 +228,59 @@ export function RecordFab() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  fabArea: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -26,
-    shadowColor: Palette.ink,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Palette.skyDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabListening: {
-    backgroundColor: Palette.coral,
-  },
-  ring: {
-    position: 'absolute',
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Palette.coral,
-  },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.96 }],
-  },
-  statusBubble: {
-    position: 'absolute',
-    bottom: 4,
-    alignItems: 'center',
-    paddingHorizontal: 10,
-  },
-  statusText: {
-    fontFamily: Fonts.bodyBold,
-    fontSize: 12,
-    lineHeight: 16,
-    textAlign: 'center',
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    wrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+    },
+    fabArea: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: -26,
+      shadowColor: palette.ink,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    fab: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: palette.skyDeep,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    fabListening: {
+      backgroundColor: palette.coral,
+    },
+    ring: {
+      position: 'absolute',
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: palette.coral,
+    },
+    pressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.96 }],
+    },
+    statusBubble: {
+      position: 'absolute',
+      bottom: 4,
+      alignItems: 'center',
+      paddingHorizontal: 10,
+    },
+    statusText: {
+      fontFamily: Fonts.bodyBold,
+      fontSize: 12,
+      lineHeight: 16,
+      textAlign: 'center',
+    },
+  });
+}

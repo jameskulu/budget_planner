@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -7,7 +8,10 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { haptic } from '@/lib/haptics';
+import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 
 type PrimaryButtonProps = PressableProps & {
   title: string;
@@ -29,17 +33,28 @@ export function PrimaryButton({
   style,
   loading = false,
   disabled,
+  onPress,
   ...rest
 }: PrimaryButtonProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+  const { hapticsEnabled } = useBudget();
   const background =
-    variant === 'leaf' ? Palette.leafDeep : variant === 'coral' ? Palette.coral : Palette.sky;
+    variant === 'leaf' ? palette.leafDeep : variant === 'coral' ? palette.coral : palette.sky;
   const isDisabled = disabled || loading;
+
+  const handlePress = (e: Parameters<NonNullable<typeof onPress>>[0]) => {
+    if (isDisabled) return;
+    haptic('light', hapticsEnabled);
+    onPress?.(e);
+  };
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
+      onPress={handlePress}
       style={({ pressed }) => [
         styles.button,
         big && styles.big,
@@ -62,35 +77,37 @@ export function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    minHeight: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  big: {
-    minHeight: 64,
-  },
-  pressed: {
-    transform: [{ scale: 0.97 }],
-    backgroundColor: Palette.skyDeep,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  label: {
-    color: '#FFFFFF',
-    fontFamily: Fonts.bodyBold,
-    fontSize: 20,
-    lineHeight: 28,
-  },
-  labelPressed: {
-    opacity: 0.95,
-  },
-  spinner: {
-    marginVertical: -14,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    button: {
+      minHeight: 56,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+    },
+    big: {
+      minHeight: 64,
+    },
+    pressed: {
+      transform: [{ scale: 0.97 }],
+      backgroundColor: palette.skyDeep,
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+    label: {
+      color: '#FFFFFF',
+      fontFamily: Fonts.bodyBold,
+      fontSize: 20,
+      lineHeight: 28,
+    },
+    labelPressed: {
+      opacity: 0.95,
+    },
+    spinner: {
+      marginVertical: -14,
+    },
+  });
+}

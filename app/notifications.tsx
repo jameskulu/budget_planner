@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -7,7 +7,7 @@ import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
 import {
   getScheduledReminders,
   hasNotificationPermission,
@@ -17,9 +17,12 @@ import {
   type ScheduledReminder,
 } from '@/lib/notifications';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 
 export default function NotificationsScreen() {
-  const { notificationPrefs, setNotificationPrefs } = useBudget();
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+  const { notificationPrefs, setNotificationPrefs, recurring } = useBudget();
   const [reminders, setReminders] = useState<ScheduledReminder[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [permission, setPermission] = useState<boolean | null>(null);
@@ -48,7 +51,7 @@ export default function NotificationsScreen() {
         return;
       }
     }
-    await syncNotifications(next);
+    await syncNotifications(next, recurring);
     void refresh();
   };
 
@@ -56,7 +59,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.chrome}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} onPress={() => router.back()}>
-          <IconSymbol name="chevron.left" size={24} color={Palette.ink} />
+          <IconSymbol name="chevron.left" size={24} color={palette.ink} />
         </Pressable>
         <ThemedText type="title">Notifications</ThemedText>
       </View>
@@ -77,8 +80,8 @@ export default function NotificationsScreen() {
               onValueChange={(v) => {
                 void togglePref('dailyReminder', v);
               }}
-              trackColor={{ true: Palette.skyDeep, false: Palette.outline }}
-              thumbColor={Palette.surface}
+              trackColor={{ true: palette.skyDeep, false: palette.outline }}
+              thumbColor={palette.surface}
             />
           </View>
           <View style={styles.toggleRow}>
@@ -91,8 +94,8 @@ export default function NotificationsScreen() {
               onValueChange={(v) => {
                 void togglePref('billReminders', v);
               }}
-              trackColor={{ true: Palette.skyDeep, false: Palette.outline }}
-              thumbColor={Palette.surface}
+              trackColor={{ true: palette.skyDeep, false: palette.outline }}
+              thumbColor={palette.surface}
             />
           </View>
         </Card>
@@ -115,7 +118,7 @@ export default function NotificationsScreen() {
               {reminders.map((r) => (
                 <View key={r.id} style={styles.row}>
                   <View style={styles.rowIcon}>
-                    <IconSymbol name="bell.fill" size={18} color={Palette.skyDeep} />
+                    <IconSymbol name="bell.fill" size={18} color={palette.skyDeep} />
                   </View>
                   <View style={styles.rowText}>
                     <ThemedText style={styles.rowTitle}>{r.body}</ThemedText>
@@ -141,10 +144,11 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Palette.background,
+    backgroundColor: palette.background,
   },
   chrome: {
     flexDirection: 'row',
@@ -160,7 +164,7 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   hint: {
-    color: Palette.inkMuted,
+    color: palette.inkMuted,
     fontSize: 15,
     lineHeight: 22,
   },
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Palette.outline,
+    borderBottomColor: palette.outline,
   },
   toggleText: {
     flex: 1,
@@ -181,10 +185,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bodyBold,
     fontSize: 16,
     lineHeight: 22,
-    color: Palette.ink,
+    color: palette.ink,
   },
   toggleHint: {
-    color: Palette.inkSubtle,
+    color: palette.inkSubtle,
     fontSize: 14,
     lineHeight: 18,
   },
@@ -197,7 +201,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Palette.outline,
+    borderBottomColor: palette.outline,
   },
   rowIcon: {
     width: 36,
@@ -205,7 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Palette.skySoft,
+    backgroundColor: palette.skySoft,
   },
   rowText: {
     flex: 1,
@@ -214,12 +218,13 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 16,
     lineHeight: 22,
-    color: Palette.ink,
+    color: palette.ink,
     fontFamily: Fonts.bodyBold,
   },
   rowMeta: {
     fontSize: 14,
     lineHeight: 18,
-    color: Palette.inkSubtle,
+    color: palette.inkSubtle,
   },
 });
+}

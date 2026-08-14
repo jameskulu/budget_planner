@@ -39,6 +39,16 @@ const CURRENCY_KEY = 'budget-planner:currency:v1';
 const NOTIFS_KEY = 'budget-planner:notifications:v1';
 const ONBOARDING_KEY = 'budget-planner:onboarding:v1';
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** True for real Supabase user ids; false for the local guest ("test-user"). */
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+const HAPTICS_KEY = 'budget-planner:haptics:v1';
+const BIOMETRIC_KEY = 'budget-planner:biometric:v1';
+
 function cacheKeyFor(userId: string): string {
   return `${CACHE_PREFIX}${userId}`;
 }
@@ -167,6 +177,10 @@ type StoreContextValue = {
   resetOnboarding: () => void;
   notificationPrefs: NotificationPrefs;
   setNotificationPrefs: (prefs: NotificationPrefs) => void;
+  hapticsEnabled: boolean;
+  setHapticsEnabled: (enabled: boolean) => void;
+  biometricEnabled: boolean;
+  setBiometricEnabled: (enabled: boolean) => void;
   addRecurring: (item: Omit<RecurringItem, 'id'>) => void;
   deleteRecurring: (id: string) => void;
   addNote: (note: string) => ParseResult;
@@ -188,6 +202,8 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPrefs>(
     DEFAULT_NOTIFICATION_PREFS,
   );
+  const [hapticsEnabled, setHapticsEnabledState] = useState(true);
+  const [biometricEnabled, setBiometricEnabledState] = useState(false);
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -304,7 +320,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   // onboarding_completed flag (from any device) wins over the local state.
   useEffect(() => {
     const userId = user?.id;
-    if (!userId || !isSupabaseConfigured) return;
+    if (!userId || !isSupabaseConfigured || !isUuid(userId)) return;
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -339,7 +355,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const userId = user?.id;
-    if (!userId || !isSupabaseConfigured || !onboardingLoaded) return;
+    if (!userId || !isSupabaseConfigured || !onboardingLoaded || !isUuid(userId)) return;
     const timer = setTimeout(() => {
       supabase
         .from('user_profiles')
@@ -378,8 +394,37 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(NOTIFS_KEY, JSON.stringify(notificationPrefs)).catch(() => {});
   }, [notificationPrefs]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const raw = await AsyncStorage.getItem(HAPTICS_KEY);
+      if (raw === 'false' && !cancelled) setHapticsEnabledState(false);
+      const bio = await AsyncStorage.getItem(BIOMETRIC_KEY);
+      if (bio === 'true' && !cancelled) setBiometricEnabledState(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(HAPTICS_KEY, String(hapticsEnabled)).catch(() => {});
+  }, [hapticsEnabled]);
+
+  useEffect(() => {
+    AsyncStorage.setItem(BIOMETRIC_KEY, String(biometricEnabled)).catch(() => {});
+  }, [biometricEnabled]);
+
   const setNotificationPrefs = useCallback((prefs: NotificationPrefs) => {
     setNotificationPrefsState(prefs);
+  }, []);
+
+  const setHapticsEnabled = useCallback((enabled: boolean) => {
+    setHapticsEnabledState(enabled);
+  }, []);
+
+  const setBiometricEnabled = useCallback((enabled: boolean) => {
+    setBiometricEnabledState(enabled);
   }, []);
 
   /**
@@ -626,6 +671,10 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
       resetOnboarding,
       notificationPrefs,
       setNotificationPrefs,
+      hapticsEnabled,
+      setHapticsEnabled,
+      biometricEnabled,
+      setBiometricEnabled,
       addRecurring,
       deleteRecurring,
       addNote,
@@ -647,6 +696,10 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
       resetOnboarding,
       notificationPrefs,
       setNotificationPrefs,
+      hapticsEnabled,
+      setHapticsEnabled,
+      biometricEnabled,
+      setBiometricEnabled,
       addRecurring,
       deleteRecurring,
       addNote,

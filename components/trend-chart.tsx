@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 type MonthBar = {
   label: string;
@@ -16,6 +17,8 @@ const GROUP_GAP = 14;
 
 /** Grouped bar chart: income vs spending per month. */
 export function TrendChart({ data }: { data: MonthBar[] }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const max = useMemo(
     () => Math.max(1, ...data.flatMap((m) => [m.income, m.spent])),
     [data],
@@ -71,60 +74,62 @@ export function TrendChart({ data }: { data: MonthBar[] }) {
   );
 }
 
-const styles = StyleSheet.create({
-  chartArea: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: CHART_HEIGHT,
-  },
-  group: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  barsWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: CHART_HEIGHT - 26,
-  },
-  bar: {
-    justifyContent: 'flex-end',
-  },
-  fill: {
-    borderRadius: 4,
-  },
-  incomeFill: {
-    backgroundColor: Palette.leafDeep,
-  },
-  spentFill: {
-    backgroundColor: Palette.coral,
-  },
-  monthLabel: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: Palette.inkSubtle,
-    fontFamily: Fonts.bodyBold,
-  },
-  key: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 16,
-  },
-  keyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  keyDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 3,
-  },
-  keyLabel: {
-    fontSize: 14,
-    lineHeight: 18,
-    color: Palette.inkMuted,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    chartArea: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      height: CHART_HEIGHT,
+    },
+    group: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 6,
+    },
+    barsWrap: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      height: CHART_HEIGHT - 26,
+    },
+    bar: {
+      justifyContent: 'flex-end',
+    },
+    fill: {
+      borderRadius: 4,
+    },
+    incomeFill: {
+      backgroundColor: palette.leafDeep,
+    },
+    spentFill: {
+      backgroundColor: palette.coral,
+    },
+    monthLabel: {
+      fontSize: 12,
+      lineHeight: 16,
+      color: palette.inkSubtle,
+      fontFamily: Fonts.bodyBold,
+    },
+    key: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 20,
+      marginTop: 16,
+    },
+    keyItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    keyDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 3,
+    },
+    keyLabel: {
+      fontSize: 14,
+      lineHeight: 18,
+      color: palette.inkMuted,
+    },
+  });
+}

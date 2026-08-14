@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { CurrencyInput } from '@/components/onboarding/currency-input';
@@ -7,7 +7,7 @@ import { OnboardingLayout } from '@/components/onboarding/onboarding-layout';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { TextField } from '@/components/ui/text-field';
-import { Palette } from '@/constants/theme';
+import { type PaletteType } from '@/constants/theme';
 import { CURRENCIES } from '@/lib/currency';
 import {
   createId,
@@ -17,6 +17,7 @@ import {
 } from '@/lib/onboarding';
 import { isoDaysFromToday } from '@/lib/safe-spend';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 import type { StepProps } from '@/components/onboarding/steps/welcome';
 
 function parseAmount(raw: string): number | null {
@@ -27,6 +28,8 @@ function parseAmount(raw: string): number | null {
 
 export function IncomeStep({ value, update, next, back, symbol }: StepProps) {
   const { currency, setCurrency } = useBudget();
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [raw, setRaw] = useState(value.income != null ? String(value.income) : '');
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +97,8 @@ export function IncomeStep({ value, update, next, back, symbol }: StepProps) {
 }
 
 export function PaydayStep({ value, update, next, back }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const selected = value.nextPayday;
   const daysLeft = selected
     ? Math.max(0, Math.round((new Date(selected).getTime() - Date.now()) / 86400000))
@@ -134,6 +139,8 @@ const FREQUENCIES: { id: OnboardingBill['frequency']; label: string }[] = [
 ];
 
 export function BillsStep({ value, update, next, back, symbol }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [draft, setDraft] = useState<BillDraft>({
     label: '',
     amount: '',
@@ -202,7 +209,7 @@ export function BillsStep({ value, update, next, back, symbol }: StepProps) {
             value={draft.label}
             onChangeText={(t) => setDraft((d) => ({ ...d, label: t }))}
             placeholder="Bill name"
-            placeholderTextColor={Palette.inkFaint}
+            placeholderTextColor={palette.inkFaint}
           />
           <CurrencyInput
             symbol={symbol}
@@ -268,6 +275,8 @@ export function BillsStep({ value, update, next, back, symbol }: StepProps) {
 }
 
 export function SavingsStep({ value, update, next, back, symbol }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [raw, setRaw] = useState(value.savingsMonthly != null ? String(value.savingsMonthly) : '');
   const [error, setError] = useState<string | null>(null);
 
@@ -342,143 +351,145 @@ export function SavingsStep({ value, update, next, back, symbol }: StepProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  echo: {
-    color: Palette.inkMuted,
-    fontSize: 18,
-    lineHeight: 26,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  perMonth: {
-    color: Palette.inkMuted,
-    fontSize: 18,
-    lineHeight: 26,
-    marginTop: -12,
-  },
-  footerStack: {
-    gap: 6,
-  },
-  skip: {
-    textAlign: 'center',
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 22,
-    textDecorationLine: 'underline',
-    paddingVertical: 6,
-  },
-  chipsRow: {
-    gap: 8,
-    paddingBottom: 4,
-  },
-  chip: {
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  chipActive: {
-    borderColor: Palette.berry,
-    backgroundColor: Palette.berrySoft,
-  },
-  chipPressed: {
-    opacity: 0.7,
-  },
-  chipText: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: Palette.ink,
-  },
-  chipTextActive: {
-    color: Palette.berry,
-    fontFamily: 'Inter_700Bold',
-  },
-  form: {
-    gap: 12,
-  },
-  formLabel: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: Palette.inkMuted,
-  },
-  freqRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  freq: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  freqActive: {
-    borderColor: Palette.berry,
-    backgroundColor: Palette.berrySoft,
-  },
-  freqText: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: Palette.inkMuted,
-  },
-  freqTextActive: {
-    color: Palette.berry,
-    fontFamily: 'Inter_700Bold',
-  },
-  billList: {
-    gap: 8,
-  },
-  billRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  billLabel: {
-    flex: 1,
-    fontSize: 17,
-    lineHeight: 24,
-    color: Palette.ink,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  billAmount: {
-    fontFamily: 'JetBrainsMono_700Bold',
-    fontSize: 16,
-    lineHeight: 22,
-    color: Palette.ink,
-  },
-  remove: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.surfaceSunken,
-  },
-  removePressed: {
-    backgroundColor: Palette.coralSoft,
-  },
-  removeText: {
-    fontSize: 14,
-    lineHeight: 16,
-    color: Palette.inkSubtle,
-  },
-  optionalLabel: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: Palette.inkMuted,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    echo: {
+      color: palette.inkMuted,
+      fontSize: 18,
+      lineHeight: 26,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    perMonth: {
+      color: palette.inkMuted,
+      fontSize: 18,
+      lineHeight: 26,
+      marginTop: -12,
+    },
+    footerStack: {
+      gap: 6,
+    },
+    skip: {
+      textAlign: 'center',
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 22,
+      textDecorationLine: 'underline',
+      paddingVertical: 6,
+    },
+    chipsRow: {
+      gap: 8,
+      paddingBottom: 4,
+    },
+    chip: {
+      borderRadius: 999,
+      borderWidth: 1.5,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+    },
+    chipActive: {
+      borderColor: palette.berry,
+      backgroundColor: palette.berrySoft,
+    },
+    chipPressed: {
+      opacity: 0.7,
+    },
+    chipText: {
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.ink,
+    },
+    chipTextActive: {
+      color: palette.berry,
+      fontFamily: 'Inter_700Bold',
+    },
+    form: {
+      gap: 12,
+    },
+    formLabel: {
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.inkMuted,
+    },
+    freqRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    freq: {
+      flex: 1,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      paddingVertical: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+    },
+    freqActive: {
+      borderColor: palette.berry,
+      backgroundColor: palette.berrySoft,
+    },
+    freqText: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: palette.inkMuted,
+    },
+    freqTextActive: {
+      color: palette.berry,
+      fontFamily: 'Inter_700Bold',
+    },
+    billList: {
+      gap: 8,
+    },
+    billRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    billLabel: {
+      flex: 1,
+      fontSize: 17,
+      lineHeight: 24,
+      color: palette.ink,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    billAmount: {
+      fontFamily: 'JetBrainsMono_700Bold',
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.ink,
+    },
+    remove: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: palette.surfaceSunken,
+    },
+    removePressed: {
+      backgroundColor: palette.coralSoft,
+    },
+    removeText: {
+      fontSize: 14,
+      lineHeight: 16,
+      color: palette.inkSubtle,
+    },
+    optionalLabel: {
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.inkMuted,
+    },
+  });
+}

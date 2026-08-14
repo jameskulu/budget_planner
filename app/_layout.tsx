@@ -1,4 +1,4 @@
-import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, DarkTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { JetBrainsMono_400Regular, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import { Stack } from 'expo-router';
@@ -13,8 +13,9 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { setupNotificationHandler } from '@/lib/notifications';
 import { configurePurchases, identifyPurchasesUser, resetPurchasesUser } from '@/lib/purchases';
 import { BudgetProvider } from '@/lib/store';
+import { ThemeProvider, useAppTheme } from '@/lib/theme';
 import { ToastProvider } from '@/components/toast';
-import { Palette } from '@/constants/theme';
+import { BiometricLock } from '@/components/biometric-lock';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -24,6 +25,7 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { loading, user } = useAuth();
+  const { palette } = useAppTheme();
 
   useEffect(() => {
     configurePurchases();
@@ -43,21 +45,25 @@ function RootNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.background }}>
-        <ActivityIndicator color={Palette.sky} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.background }}>
+        <ActivityIndicator color={palette.sky} />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="plan" />
-      <Stack.Screen name="notifications" />
-      <Stack.Screen name="insights" />
-      <Stack.Screen name="(auth)/login" />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="plan" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="insights" />
+        <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="(auth)/email" />
+      </Stack>
+      <BiometricLock />
+    </View>
   );
 }
 
@@ -82,15 +88,25 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={DefaultTheme}>
-      <AuthProvider>
-        <BudgetProvider>
-          <ToastProvider>
-            <RootNavigator />
-          </ToastProvider>
-        </BudgetProvider>
-      </AuthProvider>
-      <StatusBar style="dark" />
+    <ThemeProvider>
+      <NavThemeBridge>
+        <AuthProvider>
+          <BudgetProvider>
+            <ToastProvider>
+              <RootNavigator />
+            </ToastProvider>
+          </BudgetProvider>
+        </AuthProvider>
+        <StatusBar style="auto" />
+      </NavThemeBridge>
     </ThemeProvider>
+  );
+}
+
+/** Keeps react-navigation's theme in sync with the app theme. */
+function NavThemeBridge({ children }: { children: React.ReactNode }) {
+  const { isDark } = useAppTheme();
+  return (
+    <NavThemeProvider value={isDark ? DarkTheme : DefaultTheme}>{children}</NavThemeProvider>
   );
 }

@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Image, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 const PICO_POSES = {
   // Direct mappings to the new no-background mascot illustrations
@@ -59,7 +60,8 @@ type PicoProps = {
 /**
  * Pico — the friendly purple money mascot.
  * Renders high-quality transparent (no background) mascot illustrations,
- * with optional speech callouts, interactive tap quotes, and badges.
+ * with optional speech callouts and badges. Tapping Pico is intentionally
+ * inert: any shown tip is chosen at random and never changes on tap.
  */
 export function Pico({
   size = 120,
@@ -71,17 +73,14 @@ export function Pico({
   style,
   badge,
 }: PicoProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [failed, setFailed] = useState(false);
-  const [quoteIndex, setQuoteIndex] = useState(0);
-  const [userTapped, setUserTapped] = useState(false);
+  const [tipIndex] = useState(() => Math.floor(Math.random() * PICO_QUOTES.length));
 
-  const handlePress = () => {
-    if (!interactive) return;
-    setUserTapped(true);
-    setQuoteIndex((prev) => (prev + 1) % PICO_QUOTES.length);
-  };
-
-  const activeSpeech = userTapped ? PICO_QUOTES[quoteIndex] : speech;
+  // When no explicit speech is given, Pico shows a random tip. It is stable
+  // for the lifetime of the component — tapping does not change it.
+  const activeSpeech = speech ?? (interactive ? PICO_QUOTES[tipIndex] : undefined);
   const isHorizontal = speechPosition === 'right';
   const poseSource = PICO_POSES[pose] ?? PICO_POSES.home_dashboard;
 
@@ -112,24 +111,18 @@ export function Pico({
 
   if (!activeSpeech) {
     return (
-      <Pressable
-        onPress={handlePress}
-        disabled={!interactive}
-        style={({ pressed }) => [style, pressed && interactive && styles.pressed]}>
+      <View style={style}>
         {mascotGraphic}
-      </Pressable>
+      </View>
     );
   }
 
   return (
-    <Pressable
-      onPress={handlePress}
-      disabled={!interactive}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.container,
         isHorizontal ? styles.containerRow : styles.containerCol,
         style,
-        pressed && interactive && styles.pressed,
       ]}>
       {speechPosition === 'top' ? (
         <View style={[styles.bubble, styles.bubbleTop]}>
@@ -150,84 +143,82 @@ export function Pico({
           <ThemedText style={styles.bubbleText}>{activeSpeech}</ThemedText>
         </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  containerRow: {
-    flexDirection: 'row',
-  },
-  containerCol: {
-    flexDirection: 'column',
-  },
-  frame: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  framedBox: {
-    backgroundColor: Palette.berrySoft,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Palette.skySoft,
-  },
-  fallback: {
-    color: Palette.berry,
-    fontFamily: Fonts.monoBold,
-  },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.97 }],
-  },
-  bubble: {
-    backgroundColor: '#F3EFFF',
-    borderWidth: 1.5,
-    borderColor: Palette.skySoft,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    maxWidth: 240,
-    shadowColor: Palette.skyDeep,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  bubbleRight: {
-    flex: 1,
-    borderTopLeftRadius: 4,
-  },
-  bubbleTop: {
-    borderBottomRightRadius: 4,
-  },
-  bubbleBottom: {
-    borderTopLeftRadius: 4,
-  },
-  bubbleText: {
-    fontSize: 15,
-    lineHeight: 21,
-    color: Palette.ink,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  badgePill: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    backgroundColor: Palette.leafDeep,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontFamily: Fonts.monoBold,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      gap: 12,
+    },
+    containerRow: {
+      flexDirection: 'row',
+    },
+    containerCol: {
+      flexDirection: 'column',
+    },
+    frame: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    framedBox: {
+      backgroundColor: palette.berrySoft,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: palette.skySoft,
+    },
+    fallback: {
+      color: palette.berry,
+      fontFamily: Fonts.monoBold,
+    },
+    bubble: {
+      backgroundColor: palette.berrySoft,
+      borderWidth: 1.5,
+      borderColor: palette.outline,
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      maxWidth: 240,
+      shadowColor: palette.skyDeep,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    bubbleRight: {
+      flex: 1,
+      borderTopLeftRadius: 4,
+    },
+    bubbleTop: {
+      borderBottomRightRadius: 4,
+    },
+    bubbleBottom: {
+      borderTopLeftRadius: 4,
+    },
+    bubbleText: {
+      fontSize: 15,
+      lineHeight: 21,
+      color: palette.ink,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    badgePill: {
+      position: 'absolute',
+      bottom: 2,
+      right: 2,
+      backgroundColor: palette.leafDeep,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+    },
+    badgeText: {
+      color: '#FFFFFF',
+      fontSize: 10,
+      fontFamily: Fonts.monoBold,
+    },
+  });
+}
 
 

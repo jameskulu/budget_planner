@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import Purchases, {
   LOG_LEVEL,
   type CustomerInfo,
@@ -10,18 +12,42 @@ const API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY;
 /** The RevenueCat entitlement granted by any paid plan. */
 export const PREMIUM_ENTITLEMENT_ID = 'premium';
 
-/**
- * True once a real RevenueCat key is present. Without a key (or on web,
- * where native IAP is unavailable) we keep the paywall's local mock mode.
- */
+/** True when running inside Expo Go, where RevenueCat can't really buy. */
+export const isExpoGo =
+  Constants.executionEnvironment === 'storeClient';
+
+/** True once a real RevenueCat key is present. */
 export const isPurchasesConfigured = Boolean(API_KEY);
 
 /**
  * Native IAP requires a development build — RevenueCat's SDK automatically
  * runs in "Preview API Mode" inside Expo Go, mocking native calls so the
- * paywall UI still works but no real purchase happens.
+ * paywall UI still works but no real purchase happens. So real purchases
+ * are only attempted on a dev build with a key.
  */
-export const canPurchase = Platform.OS !== 'web' && isPurchasesConfigured;
+export const canPurchase = Platform.OS !== 'web' && isPurchasesConfigured && !isExpoGo;
+
+const MOCK_PREMIUM_KEY = 'budget-planner:mock-premium:v1';
+
+/**
+ * Dev-only flag that simulates an active subscription so the hard paywall
+ * can be exercised in Expo Go / on web without a real store purchase.
+ */
+export async function setMockPremium(active: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(MOCK_PREMIUM_KEY, active ? '1' : '0');
+  } catch {
+    // Ignore.
+  }
+}
+
+async function hasMockPremium(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(MOCK_PREMIUM_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
 
 let configured = false;
 
@@ -68,6 +94,7 @@ function hasAnyActiveAccess(info: CustomerInfo): boolean {
 
 /** True when the current RevenueCat user already has an active entitlement. */
 export async function isPremium(): Promise<boolean> {
+  if (await hasMockPremium()) return true;
   if (!isPurchasesConfigured) return false;
   try {
     return hasAnyActiveAccess(await Purchases.getCustomerInfo());
@@ -78,7 +105,7 @@ export async function isPremium(): Promise<boolean> {
 
 /** URL to manage the active subscription in the store, if one exists. */
 export async function getManagementUrl(): Promise<string | null> {
-  if (!isPurchasesConfigured) return null;
+  if (!isPurchasesConfigured || isExpoGo) return null;
   try {
     const info = await Purchases.getCustomerInfo();
     return info.managementURL;
@@ -104,7 +131,16 @@ export type SubscriptionDetails = {
  * "Monthly", "Yearly" and "Lifetime" are treated as display names.
  */
 export async function getSubscriptionDetails(): Promise<SubscriptionDetails> {
-  if (!isPurchasesConfigured) return { active: false, productId: null, planName: null, expiresAt: null, willRenew: false };
+  if (await hasMockPremium()) {
+    return {
+      active: true,
+      productId: 'mock-premium',
+      planName: 'Trial',
+      expiresAt: null,
+      willRenew: true,
+    };
+  }
+  if (!isPurchasesConfigured || isExpoGo) return { active: false, productId: null, planName: null, expiresAt: null, willRenew: false };
   try {
     const info = await Purchases.getCustomerInfo();
     const active = hasAnyActiveAccess(info);
@@ -144,7 +180,7 @@ export type AvailablePlans = {
 
 /** Fetch the current offering's monthly/annual packages (null in mock mode). */
 export async function getAvailablePlans(): Promise<AvailablePlans> {
-  if (!isPurchasesConfigured) return { monthly: null, annual: null };
+  if (!isPurchasesConfigured || isExpoGo) return { monthly: null, annual: null };
   try {
     const offerings = await Purchases.getOfferings();
     const current = offerings.current;
@@ -164,6 +200,12 @@ export type PurchaseOutcome =
 
 /** Purchase a package and report the result. */
 export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseOutcome> {
+  // Expo Go / web / no key: simulate a successful purchase locally so the
+  // trial flow can be tested without a real store.
+  if (!canPurchase) {
+    await setMockPremium(true);
+    return { status: 'purchased' };
+  }
   try {
     await Purchases.purchasePackage(pkg);
     const fresh = await Purchases.getCustomerInfo();
@@ -190,7 +232,11 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseOu
 
 /** Attempt to restore prior purchases; resolves true when entitlement is active. */
 export async function restorePurchases(): Promise<boolean> {
-  if (!isPurchasesConfigured) return false;
+  if (!canPurchase) {
+    // No real purchases in Expo Go/web — nothing to restore, but honor the
+    // local mock flag if it was set.
+    return hasMockPremium();
+  }
   try {
     return hasAnyActiveAccess(await Purchases.restorePurchases());
   } catch {

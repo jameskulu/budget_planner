@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet } from 'react-native';
 
 import { useToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Palette } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 type SRModule = (typeof import('expo-speech-recognition'))['ExpoSpeechRecognitionModule'];
 
@@ -41,6 +41,7 @@ type Props = {
 export function DictationButton({ existingText, onTranscript, onState }: Props) {
   const [listening, setListening] = useState(false);
   const { showToast } = useToast();
+  const { palette } = useAppTheme();
 
   const existingRef = useRef(existingText);
   const onTranscriptRef = useRef(onTranscript);
@@ -160,7 +161,7 @@ export function DictationButton({ existingText, onTranscript, onState }: Props) 
       <IconSymbol
         name="mic.fill"
         size={24}
-        color={listening ? Palette.coral : Palette.inkMuted}
+        color={listening ? palette.coral : palette.inkMuted}
       />
     </Pressable>
   );

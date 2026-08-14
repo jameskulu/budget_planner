@@ -1,16 +1,32 @@
 import { Redirect, Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { RecordFab } from '@/components/record-fab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Palette } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { isPremium } from '@/lib/purchases';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 
 export default function TabLayout() {
   const { user } = useAuth();
   const { onboarding, onboardingLoaded } = useBudget();
+  const { palette } = useAppTheme();
+  const [premium, setPremium] = useState(false);
+  const [premiumChecked, setPremiumChecked] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    isPremium().then((active) => {
+      if (!mounted) return;
+      setPremium(active);
+      setPremiumChecked(true);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
   if (!onboardingLoaded) {
     return null;
@@ -24,14 +40,23 @@ export default function TabLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
+  // Hard paywall: the app is unusable without an active subscription.
+  if (!premiumChecked) {
+    return null;
+  }
+
+  if (!premium) {
+    return <Redirect href="/onboarding?step=14" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Palette.sky,
-        tabBarInactiveTintColor: Palette.inkSubtle,
+        tabBarActiveTintColor: palette.sky,
+        tabBarInactiveTintColor: palette.inkSubtle,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarStyle: { backgroundColor: Palette.background, height: 64, paddingBottom: 8 },
+        tabBarStyle: { backgroundColor: palette.background, height: 64, paddingBottom: 8 },
       }}>
       <Tabs.Screen
         name="index"

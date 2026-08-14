@@ -20,7 +20,10 @@ type AuthContextValue = {
   user: User | null;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
-  signInAsTestUser: () => void;
+  signInWithApple: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<boolean>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<boolean>;
+  signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
   /** Updates the user's display name (persisted to their profile). */
   updateName: (name: string) => Promise<void>;
@@ -28,28 +31,15 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function makeTestUser(): User {
-  return {
-    id: 'test-user',
-    aud: 'authenticated',
-    role: 'authenticated',
-    email: 'test@example.com',
-    app_metadata: { provider: 'test' },
-    user_metadata: {},
-    created_at: new Date().toISOString(),
-  };
-}
-
 /**
- * On native, Supabase hands us the auth URL and we open it in a browser
- * session; the callback returns a URL carrying the PKCE `code` we exchange
- * for a session. On web the browser does the redirect and supabase-js
- * parses the session straight out of the URL hash.
+ * Guest access uses a real Supabase anonymous session, so the user gets a
+ * valid UUID and their profile syncs to `user_profiles` like any other user.
+ * Requires the "Anonymous sign-ins" provider to be enabled in the Supabase
+ * dashboard (Authentication → Providers → Anonymous).
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
-  const [testUser, setTestUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithOAuth = useCallback(async (provider: 'google' | 'apple') => {
     setError(null);
     if (!isSupabaseConfigured) {
       setError('Supabase is not configured yet. Add your keys to .env and restart.');
@@ -75,16 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       if (Platform.OS === 'web') {
-        const { error: err } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-        });
+        const { error: err } = await supabase.auth.signInWithOAuth({ provider });
         if (err) throw err;
         return;
       }
 
       const redirectTo = Linking.createURL('auth-callback');
       const { data, error: err } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider,
         options: { redirectTo, skipBrowserRedirect: true },
       });
       if (err) throw err;
@@ -99,13 +87,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not sign in with Google.');
+      setError(e instanceof Error ? e.message : `Could not sign in with ${provider}.`);
     }
   }, []);
 
-  const signInAsTestUser = useCallback(() => {
+  const signInWithGoogle = useCallback(() => signInWithOAuth('google'), [signInWithOAuth]);
+
+  const signInWithApple = useCallback(() => signInWithOAuth('apple'), [signInWithOAuth]);
+
+  const signInWithEmail = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      setError(null);
+      if (!isSupabaseConfigured) {
+        setError('Supabase is not configured yet. Add your keys to .env and restart.');
+        return false;
+      }
+      try {
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+        if (err) throw err;
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not sign in with email.');
+        return false;
+      }
+    },
+    [],
+  );
+
+  const signUpWithEmail = useCallback(
+    async (name: string, email: string, password: string): Promise<boolean> => {
+      setError(null);
+      if (!isSupabaseConfigured) {
+        setError('Supabase is not configured yet. Add your keys to .env and restart.');
+        return false;
+      }
+      try {
+        const { data, error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name } },
+        });
+        if (err) throw err;
+        // When email confirmation is enabled, no session is returned yet.
+        return Boolean(data.session);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not create your account.');
+        return false;
+      }
+    },
+    [],
+  );
+
+  const signInAsGuest = useCallback(async () => {
     setError(null);
-    setTestUser(makeTestUser());
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not configured yet. Add your keys to .env and restart.');
+      return;
+    }
+    try {
+      await supabase.auth.signInAnonymously();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not sign in as a guest.');
+    }
   }, []);
 
   const updateName = useCallback(async (name: string) => {
@@ -120,16 +163,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not update your name.');
       }
-      return;
     }
-    setTestUser((prev) =>
-      prev ? { ...prev, user_metadata: { ...prev.user_metadata, full_name: trimmed } } : prev,
-    );
   }, [session]);
 
   const signOut = useCallback(async () => {
     setError(null);
-    setTestUser(null);
     try {
       await supabase.auth.signOut();
     } catch (e) {
@@ -142,14 +180,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       configured: isSupabaseConfigured,
       session,
-      user: session?.user ?? testUser,
+      user: session?.user ?? null,
       error,
       signInWithGoogle,
-      signInAsTestUser,
+      signInWithApple,
+      signInWithEmail,
+      signUpWithEmail,
+      signInAsGuest,
       signOut,
       updateName,
     }),
-    [loading, session, testUser, error, signInWithGoogle, signInAsTestUser, signOut, updateName],
+    [
+      loading,
+      session,
+      error,
+      signInWithGoogle,
+      signInWithApple,
+      signInWithEmail,
+      signUpWithEmail,
+      signInAsGuest,
+      signOut,
+      updateName,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

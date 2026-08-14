@@ -1,7 +1,7 @@
 /**
  * Skylearn design system tokens (see skylearn-DESIGN.md).
- * The app is light-only: surfaces are white, corners soft, type large and
- * clean (Inter for headings and body, JetBrains Mono for numbers).
+ * The app ships with light + dark themes; the active palette is resolved at
+ * runtime via useAppTheme() and applied to components/screens.
  */
 
 export const Palette = {
@@ -46,6 +46,48 @@ export const Palette = {
   background: '#FFFFFF',
 } as const;
 
+export const DarkPalette = {
+  // Brand
+  sky: '#60A5FA',
+  skyBright: '#93C5FD',
+  skyDeep: '#3B82F6',
+  skySoft: '#1E3A5F',
+
+  // Achievement
+  sun: '#FBBF24',
+  sunBright: '#FCD34D',
+  sunDeep: '#F59E0B',
+  sunSoft: '#3A2E12',
+
+  // Progress / correct
+  leaf: '#4ADE80',
+  leafSoft: '#143D24',
+  leafDeep: '#22C55E',
+
+  // Gentle error
+  coral: '#FCA5A5',
+  coralSoft: '#3B1C1C',
+
+  // Secondary accent
+  berry: '#C084FC',
+  berrySoft: '#2A1B3F',
+
+  // Text
+  ink: '#F1F5F9',
+  inkMuted: '#CBD5E1',
+  inkSubtle: '#94A3B8',
+  inkFaint: '#64748B',
+
+  // Lines
+  outline: '#334155',
+  outlineStrong: '#475569',
+
+  // Surfaces
+  surface: '#1E293B',
+  surfaceSunken: '#16202E',
+  background: '#0F172A',
+} as const;
+
 /**
  * Font family names registered at runtime in app/_layout.tsx via
  * useFonts(). They must match the keys used there exactly.
@@ -61,8 +103,8 @@ export const Fonts = {
 } as const;
 
 /**
- * Skylearn is a light-first system. Both schemes resolve to the same tokens
- * so the app always renders light regardless of the device setting.
+ * The app supports light and dark schemes. Tokens resolve to the matching
+ * palette at runtime via useAppTheme().
  */
 export const Colors = {
   light: {
@@ -74,11 +116,16 @@ export const Colors = {
     tabIconSelected: Palette.sky,
   },
   dark: {
-    text: Palette.ink,
-    background: Palette.background,
-    tint: Palette.sky,
-    icon: Palette.inkSubtle,
-    tabIconDefault: Palette.inkSubtle,
-    tabIconSelected: Palette.sky,
+    text: DarkPalette.ink,
+    background: DarkPalette.background,
+    tint: DarkPalette.sky,
+    icon: DarkPalette.inkSubtle,
+    tabIconDefault: DarkPalette.inkSubtle,
+    tabIconSelected: DarkPalette.sky,
   },
 };
+
+export type ThemeMode = 'light' | 'dark';
+
+/** Shape shared by the light and dark palettes. */
+export type PaletteType = { [K in keyof typeof Palette]: string };

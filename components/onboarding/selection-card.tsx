@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Palette } from '@/constants/theme';
+import { type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 type SelectionCardProps = {
   icon?: string;
@@ -20,6 +22,9 @@ export function SelectionCard({
   onPress,
   style,
 }: SelectionCardProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -43,53 +48,55 @@ export function SelectionCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    minHeight: 72,
-  },
-  cardSelected: {
-    borderColor: Palette.berry,
-    backgroundColor: Palette.berrySoft,
-  },
-  pressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.99 }],
-  },
-  icon: {
-    fontSize: 28,
-    lineHeight: 34,
-  },
-  text: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 17,
-    lineHeight: 24,
-    color: Palette.ink,
-  },
-  titleSelected: {
-    color: Palette.ink,
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 21,
-    color: Palette.inkMuted,
-  },
-  check: {
-    color: Palette.berry,
-    fontSize: 18,
-    lineHeight: 22,
-    fontFamily: 'Inter_700Bold',
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      borderRadius: 18,
+      borderWidth: 1.5,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      paddingHorizontal: 18,
+      paddingVertical: 16,
+      minHeight: 72,
+    },
+    cardSelected: {
+      borderColor: palette.berry,
+      backgroundColor: palette.berrySoft,
+    },
+    pressed: {
+      opacity: 0.75,
+      transform: [{ scale: 0.99 }],
+    },
+    icon: {
+      fontSize: 28,
+      lineHeight: 34,
+    },
+    text: {
+      flex: 1,
+      gap: 2,
+    },
+    title: {
+      fontFamily: 'Inter_700Bold',
+      fontSize: 17,
+      lineHeight: 24,
+      color: palette.ink,
+    },
+    titleSelected: {
+      color: palette.ink,
+    },
+    subtitle: {
+      fontSize: 15,
+      lineHeight: 21,
+      color: palette.inkMuted,
+    },
+    check: {
+      color: palette.berry,
+      fontSize: 18,
+      lineHeight: 22,
+      fontFamily: 'Inter_700Bold',
+    },
+  });
+}

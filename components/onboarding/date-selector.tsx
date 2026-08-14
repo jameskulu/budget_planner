@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Palette } from '@/constants/theme';
+import { type PaletteType } from '@/constants/theme';
 import { isoDaysFromToday } from '@/lib/safe-spend';
+import { useAppTheme } from '@/lib/theme';
 
 type DateChip = {
   iso: string;
@@ -38,6 +40,8 @@ export function DateSelector({
   onSelect: (iso: string) => void;
   today?: Date;
 }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const chips = buildChips(days, today);
 
   return (
@@ -71,46 +75,48 @@ export function DateSelector({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    gap: 10,
-    paddingBottom: 4,
-  },
-  chip: {
-    alignItems: 'center',
-    gap: 2,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minWidth: 64,
-  },
-  chipSelected: {
-    borderColor: Palette.berry,
-    backgroundColor: Palette.berrySoft,
-  },
-  pressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.98 }],
-  },
-  weekday: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: Palette.inkMuted,
-  },
-  weekdaySelected: {
-    color: Palette.berry,
-    fontFamily: 'Inter_700Bold',
-  },
-  day: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 20,
-    lineHeight: 26,
-    color: Palette.ink,
-  },
-  daySelected: {
-    color: Palette.berry,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    row: {
+      gap: 10,
+      paddingBottom: 4,
+    },
+    chip: {
+      alignItems: 'center',
+      gap: 2,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      minWidth: 64,
+    },
+    chipSelected: {
+      borderColor: palette.berry,
+      backgroundColor: palette.berrySoft,
+    },
+    pressed: {
+      opacity: 0.75,
+      transform: [{ scale: 0.98 }],
+    },
+    weekday: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: palette.inkMuted,
+    },
+    weekdaySelected: {
+      color: palette.berry,
+      fontFamily: 'Inter_700Bold',
+    },
+    day: {
+      fontFamily: 'Inter_700Bold',
+      fontSize: 20,
+      lineHeight: 26,
+      color: palette.ink,
+    },
+    daySelected: {
+      color: palette.berry,
+    },
+  });
+}

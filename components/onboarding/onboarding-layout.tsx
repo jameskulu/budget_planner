@@ -1,11 +1,12 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/onboarding/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Palette } from '@/constants/theme';
+import { type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 type OnboardingLayoutProps = {
   title?: string;
@@ -29,12 +30,15 @@ export function OnboardingLayout({
   footer,
   onBack,
 }: OnboardingLayoutProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.chrome}>
         {onBack ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} onPress={onBack}>
-            <IconSymbol name="chevron.left" size={24} color={Palette.ink} />
+            <IconSymbol name="chevron.left" size={24} color={palette.ink} />
           </Pressable>
         ) : (
           <View style={styles.backPlaceholder} />
@@ -62,49 +66,51 @@ export function OnboardingLayout({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Palette.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  chrome: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  backPlaceholder: {
-    width: 24,
-  },
-  progressWrap: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-    gap: 20,
-  },
-  title: {
-    fontSize: 30,
-  },
-  subtitle: {
-    color: Palette.inkMuted,
-    fontSize: 17,
-    lineHeight: 26,
-    marginTop: -12,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderTopWidth: 1,
-    borderTopColor: Palette.outline,
-    backgroundColor: Palette.background,
-    gap: 8,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    flex: {
+      flex: 1,
+    },
+    chrome: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    backPlaceholder: {
+      width: 24,
+    },
+    progressWrap: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: 20,
+      paddingBottom: 32,
+      gap: 20,
+    },
+    title: {
+      fontSize: 30,
+    },
+    subtitle: {
+      color: palette.inkMuted,
+      fontSize: 17,
+      lineHeight: 26,
+      marginTop: -12,
+    },
+    footer: {
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 8,
+      borderTopWidth: 1,
+      borderTopColor: palette.outline,
+      backgroundColor: palette.background,
+      gap: 8,
+    },
+  });
+}

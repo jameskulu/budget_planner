@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
-import { Palette } from '@/constants/theme';
+import { type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 type Slice = {
   value: number;
@@ -40,6 +42,8 @@ export function DonutChart({
   centerLabel: string;
   centerValue: string;
 }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const total = slices.reduce((sum, s) => sum + s.value, 0);
   if (total <= 0) return null;
 
@@ -77,6 +81,8 @@ export function DonutChart({
 
 /** Horizontal legend row used under the donut. */
 export function DonutLegend({ slices }: { slices: Slice[] }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const total = slices.reduce((sum, s) => sum + s.value, 0);
   if (total <= 0) return null;
   return (
@@ -91,60 +97,62 @@ export function DonutLegend({ slices }: { slices: Slice[] }) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-    gap: 16,
-  },
-  chartWrap: {
-    width: SIZE,
-    height: SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  center: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    maxWidth: SIZE * 0.55,
-  },
-  centerValue: {
-    fontFamily: 'JetBrainsMono_700Bold',
-    fontSize: 26,
-    lineHeight: 30,
-    color: Palette.ink,
-  },
-  centerLabel: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: Palette.inkMuted,
-  },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: Palette.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendLabel: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: Palette.ink,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    wrap: {
+      alignItems: 'center',
+      gap: 16,
+    },
+    chartWrap: {
+      width: SIZE,
+      height: SIZE,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    center: {
+      position: 'absolute',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      maxWidth: SIZE * 0.55,
+    },
+    centerValue: {
+      fontFamily: 'JetBrainsMono_700Bold',
+      fontSize: 26,
+      lineHeight: 30,
+      color: palette.ink,
+    },
+    centerLabel: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: palette.inkMuted,
+    },
+    legend: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      justifyContent: 'center',
+    },
+    legendRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: palette.surface,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    legendDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    legendLabel: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: palette.ink,
+    },
+  });
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,11 +14,12 @@ import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { TextField } from '@/components/ui/text-field';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
 import { canAfford, type AffordVerdict } from '@/lib/budget';
 import { categorize } from '@/lib/categories';
 import { parseAmountOnly } from '@/lib/parser';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 
 const QUICK_CHECKS = [
   { label: 'Coffee', amount: 6 },
@@ -37,6 +38,8 @@ function todayIso(): string {
 
 export default function AskScreen() {
   const { snapshot, addTransaction, money, currency } = useBudget();
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const [text, setText] = useState('');
   const [verdict, setVerdict] = useState<AffordVerdict | null>(null);
@@ -73,9 +76,9 @@ export default function AskScreen() {
     setVerdict(null);
   };
 
-  const verdictBg = verdict?.affordable ? Palette.leafSoft : Palette.coralSoft;
-  const verdictBorder = verdict?.affordable ? Palette.leaf : Palette.coral;
-  const verdictColor = verdict?.affordable ? Palette.leafDeep : Palette.coral;
+  const verdictBg = verdict?.affordable ? palette.leafSoft : palette.coralSoft;
+  const verdictBorder = verdict?.affordable ? palette.leaf : palette.coral;
+  const verdictColor = verdict?.affordable ? palette.leafDeep : palette.coral;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -109,7 +112,7 @@ export default function AskScreen() {
             returnKeyType="search"
             onSubmitEditing={() => runCheck()}
           />
-          {error ? <ThemedText style={{ color: Palette.coral }}>{error}</ThemedText> : null}
+          {error ? <ThemedText style={{ color: palette.coral }}>{error}</ThemedText> : null}
           <PrimaryButton title="Check with Pico" onPress={() => runCheck()} />
 
           <View style={styles.chips}>
@@ -155,16 +158,16 @@ export default function AskScreen() {
                 <ThemedText style={[styles.verdictCost, { color: verdictColor }]}>
                   {money(verdict.cost)}
                 </ThemedText>
-                <ThemedText style={[styles.verdictMessage, { color: Palette.inkMuted }]}>
+                <ThemedText style={[styles.verdictMessage, { color: palette.inkMuted }]}>
                   {verdict.message}
                 </ThemedText>
-                <ThemedText style={[styles.haveLine, { color: Palette.inkMuted }]}>
+                <ThemedText style={[styles.haveLine, { color: palette.inkMuted }]}>
                   You have {money(verdict.safeToSpend)} safe to spend right now.
                 </ThemedText>
               </View>
               {logged ? (
                 <View style={styles.loggedPill}>
-                  <ThemedText style={{ color: Palette.leafDeep, fontSize: 16 }}>
+                  <ThemedText style={{ color: palette.leafDeep, fontSize: 16 }}>
                     ✓ Logged to your history by Pico!
                   </ThemedText>
                 </View>
@@ -180,7 +183,7 @@ export default function AskScreen() {
 
           <Card>
             <ThemedText type="subtitle">How it works</ThemedText>
-            <ThemedText style={[styles.howText, { color: Palette.inkMuted }]}>
+            <ThemedText style={[styles.howText, { color: palette.inkMuted }]}>
               Your money is everything you&apos;ve earned minus everything you&apos;ve
               spent. We check the purchase against that.
             </ThemedText>
@@ -191,92 +194,94 @@ export default function AskScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Palette.background,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-    gap: 20,
-  },
-  header: {
-    gap: 4,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    flexShrink: 0,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.skySoft,
-  },
-  chipPressed: {
-    backgroundColor: Palette.skyBright,
-  },
-  chipText: {
-    color: Palette.skyDeep,
-    fontFamily: Fonts.bodyBold,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  verdictCard: {
-    borderRadius: 20,
-    borderWidth: 2,
-    padding: 20,
-    gap: 12,
-  },
-  verdictHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  verdictDetails: {
-    gap: 6,
-    marginTop: 4,
-  },
-  verdictIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verdictIconText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: '700',
-  },
-  verdictCost: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 24,
-    lineHeight: 28,
-  },
-  verdictMessage: {
-    fontSize: 17,
-    lineHeight: 26,
-  },
-  haveLine: {
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  loggedPill: {
-    backgroundColor: Palette.leafSoft,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignSelf: 'flex-start',
-  },
-  howText: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 40,
+      gap: 20,
+    },
+    header: {
+      gap: 4,
+    },
+    chips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    chip: {
+      flexShrink: 0,
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: palette.skySoft,
+    },
+    chipPressed: {
+      backgroundColor: palette.skyBright,
+    },
+    chipText: {
+      color: palette.skyDeep,
+      fontFamily: Fonts.bodyBold,
+      fontSize: 16,
+      lineHeight: 22,
+    },
+    verdictCard: {
+      borderRadius: 20,
+      borderWidth: 2,
+      padding: 20,
+      gap: 12,
+    },
+    verdictHeading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    verdictDetails: {
+      gap: 6,
+      marginTop: 4,
+    },
+    verdictIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    verdictIconText: {
+      color: '#FFFFFF',
+      fontSize: 22,
+      lineHeight: 26,
+      fontWeight: '700',
+    },
+    verdictCost: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 24,
+      lineHeight: 28,
+    },
+    verdictMessage: {
+      fontSize: 17,
+      lineHeight: 26,
+    },
+    haveLine: {
+      fontSize: 16,
+      lineHeight: 22,
+    },
+    loggedPill: {
+      backgroundColor: palette.leafSoft,
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      alignSelf: 'flex-start',
+    },
+    howText: {
+      fontSize: 16,
+      lineHeight: 24,
+    },
+  });
+}

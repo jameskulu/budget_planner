@@ -8,9 +8,10 @@ import { DonutChart, DonutLegend } from '@/components/donut-chart';
 import { ThemedText } from '@/components/themed-text';
 import { TrendChart } from '@/components/trend-chart';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 import type { Transaction } from '@/lib/types';
 
 type Period = 'month' | 'last' | 'all';
@@ -48,6 +49,7 @@ type BreakdownRow = {
 function buildBreakdown(
   list: Transaction[],
   kind: 'income' | 'expense',
+  palette: PaletteType,
 ): BreakdownRow[] {
   const totals = new Map<string, number>();
   for (const t of list) {
@@ -60,7 +62,7 @@ function buildBreakdown(
     .map(([categoryId, amount]) => ({
       categoryId,
       label: CATEGORY_MAP[categoryId]?.label ?? categoryId,
-      color: CATEGORY_MAP[categoryId]?.color ?? Palette.inkSubtle,
+      color: CATEGORY_MAP[categoryId]?.color ?? palette.inkSubtle,
       amount,
       share: sum > 0 ? amount / sum : 0,
     }))
@@ -99,6 +101,8 @@ function buildTrend(
 }
 
 export default function InsightsScreen() {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const { transactions, money } = useBudget();
   const [period, setPeriod] = useState<Period>('month');
 
@@ -118,8 +122,8 @@ export default function InsightsScreen() {
     return { income, spent, saved: income - spent };
   }, [list]);
 
-  const incomeRows = useMemo(() => buildBreakdown(list, 'income'), [list]);
-  const expenseRows = useMemo(() => buildBreakdown(list, 'expense'), [list]);
+  const incomeRows = useMemo(() => buildBreakdown(list, 'income', palette), [list, palette]);
+  const expenseRows = useMemo(() => buildBreakdown(list, 'expense', palette), [list, palette]);
   const trend = useMemo(() => buildTrend(transactions, now), [transactions, now]);
   const count = list.length;
 
@@ -129,7 +133,7 @@ export default function InsightsScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.chrome}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} onPress={() => router.back()}>
-          <IconSymbol name="chevron.left" size={24} color={Palette.ink} />
+          <IconSymbol name="chevron.left" size={24} color={palette.ink} />
         </Pressable>
         <ThemedText type="title">Insights</ThemedText>
       </View>
@@ -145,7 +149,7 @@ export default function InsightsScreen() {
                 onPress={() => setPeriod(p.key)}
                 style={[styles.filter, active ? styles.filterActive : styles.filterInactive]}>
                 <ThemedText
-                  style={[styles.filterText, active ? styles.filterTextActive : { color: Palette.inkMuted }]}>
+                  style={[styles.filterText, active ? styles.filterTextActive : { color: palette.inkMuted }]}>
                   {p.label}
                 </ThemedText>
               </Pressable>
@@ -165,13 +169,13 @@ export default function InsightsScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryCol}>
                 <ThemedText style={styles.summaryLabel}>Income</ThemedText>
-                <ThemedText style={[styles.summaryValue, { color: Palette.leafDeep }]}>
+                <ThemedText style={[styles.summaryValue, { color: palette.leafDeep }]}>
                   {money(totals.income)}
                 </ThemedText>
               </View>
               <View style={styles.summaryCol}>
                 <ThemedText style={styles.summaryLabel}>Spent</ThemedText>
-                <ThemedText style={[styles.summaryValue, { color: Palette.coral }]}>
+                <ThemedText style={[styles.summaryValue, { color: palette.coral }]}>
                   {money(totals.spent)}
                 </ThemedText>
               </View>
@@ -180,7 +184,7 @@ export default function InsightsScreen() {
                 <ThemedText
                   style={[
                     styles.summaryValue,
-                    { color: totals.saved >= 0 ? Palette.leafDeep : Palette.coral },
+                    { color: totals.saved >= 0 ? palette.leafDeep : palette.coral },
                   ]}>
                   {totals.saved >= 0 ? '' : '−'}
                   {money(Math.abs(totals.saved))}
@@ -260,10 +264,11 @@ export default function InsightsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Palette.background,
+    backgroundColor: palette.background,
   },
   chrome: {
     flexDirection: 'row',
@@ -290,12 +295,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterActive: {
-    backgroundColor: Palette.sky,
+    backgroundColor: palette.sky,
   },
   filterInactive: {
-    backgroundColor: Palette.surface,
+    backgroundColor: palette.surface,
     borderWidth: 1,
-    borderColor: Palette.outline,
+    borderColor: palette.outline,
   },
   filterText: {
     fontFamily: Fonts.bodyBold,
@@ -306,10 +311,10 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flexDirection: 'row',
-    backgroundColor: Palette.surface,
+    backgroundColor: palette.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Palette.outline,
+    borderColor: palette.outline,
     padding: 20,
     gap: 12,
   },
@@ -320,7 +325,7 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 14,
     lineHeight: 18,
-    color: Palette.inkMuted,
+    color: palette.inkMuted,
   },
   summaryValue: {
     fontFamily: Fonts.monoBold,
@@ -328,12 +333,12 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   empty: {
-    color: Palette.inkMuted,
+    color: palette.inkMuted,
     fontSize: 16,
     lineHeight: 24,
   },
   emptySmall: {
-    color: Palette.inkSubtle,
+    color: palette.inkSubtle,
     fontSize: 15,
     lineHeight: 22,
   },
@@ -358,18 +363,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     lineHeight: 20,
-    color: Palette.ink,
+    color: palette.ink,
   },
   barAmount: {
     fontFamily: Fonts.monoBold,
     fontSize: 15,
     lineHeight: 20,
-    color: Palette.ink,
+    color: palette.ink,
   },
   track: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: Palette.skySoft,
+    backgroundColor: palette.skySoft,
     overflow: 'hidden',
   },
   fill: {
@@ -377,3 +382,4 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 });
+}

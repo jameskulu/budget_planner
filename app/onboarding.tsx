@@ -6,13 +6,13 @@ import { AhaStep, AffordStep, AdjustStep, CalculatingStep, SummaryStep, TrackSte
 import { BillsStep, IncomeStep, PaydayStep, SavingsStep } from '@/components/onboarding/steps/finance';
 import { AccountStep, DoneStep, PaywallStep } from '@/components/onboarding/steps/finish';
 import { GoalStep, PayFrequencyStep, ProblemStep, WelcomeStep } from '@/components/onboarding/steps/welcome';
-import { Palette } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { ONBOARDING_STEP_COUNT, type OnboardingPlan, type PlanPeriod } from '@/lib/onboarding';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 
 export default function OnboardingScreen() {
-  const { user, signInWithGoogle, signInAsTestUser } = useAuth();
+  const { user, signInWithGoogle, signInAsGuest } = useAuth();
   const params = useLocalSearchParams<{ step?: string }>();
   const jumpTo = params.step ? Number(params.step) : null;
   const {
@@ -27,6 +27,8 @@ export default function OnboardingScreen() {
   const [plan, setPlan] = useState<OnboardingPlan>(onboarding.plan);
 
   const symbol = currency.symbol;
+
+  const { palette } = useAppTheme();
 
   const next = useCallback(() => {
     updateOnboarding({ step: Math.min(onboarding.step + 1, ONBOARDING_STEP_COUNT - 1) });
@@ -70,8 +72,8 @@ export default function OnboardingScreen() {
   }, [signInWithGoogle]);
 
   const handleGuest = useCallback(() => {
-    signInAsTestUser();
-  }, [signInAsTestUser]);
+    void signInAsGuest();
+  }, [signInAsGuest]);
 
   const stepProps = useMemo(
     () => ({
@@ -129,8 +131,8 @@ export default function OnboardingScreen() {
 
   if (!onboardingLoaded) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.background }}>
-        <ActivityIndicator color={Palette.berry} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.background }}>
+        <ActivityIndicator color={palette.berry} />
       </View>
     );
   }

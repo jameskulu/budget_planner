@@ -9,7 +9,8 @@ import React, {
 import { Animated, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 type ToastTone = 'info' | 'ok' | 'error';
 
@@ -35,6 +36,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const showToast = useCallback(
     (message: string, tone: ToastTone = 'info') => {
@@ -61,10 +64,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const toneColor =
     toast?.tone === 'error'
-      ? Palette.coral
+      ? palette.coral
       : toast?.tone === 'ok'
-        ? Palette.leafDeep
-        : Palette.skyDeep;
+        ? palette.leafDeep
+        : palette.skyDeep;
 
   return (
     <ToastContext.Provider value={value}>
@@ -88,33 +91,35 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-const styles = StyleSheet.create({
-  host: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 96,
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  pill: {
-    maxWidth: '86%',
-    borderRadius: 999,
-    backgroundColor: Palette.surface,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    shadowColor: Palette.ink,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  text: {
-    fontFamily: Fonts.bodyBold,
-    fontSize: 15,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    host: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 96,
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    pill: {
+      maxWidth: '86%',
+      borderRadius: 999,
+      backgroundColor: palette.surface,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      shadowColor: palette.ink,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    text: {
+      fontFamily: Fonts.bodyBold,
+      fontSize: 15,
+      lineHeight: 20,
+      textAlign: 'center',
+    },
+  });
+}

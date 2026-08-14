@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout';
 import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 import { payFrequencyLabel, type OnboardingPlan, type PlanPeriod } from '@/lib/onboarding';
 import {
   canPurchase,
@@ -13,6 +14,7 @@ import {
   isPremium,
   purchasePackage,
   restorePurchases,
+  setMockPremium,
   type AvailablePlans,
 } from '@/lib/purchases';
 import type { StepProps } from '@/components/onboarding/steps/welcome';
@@ -41,6 +43,8 @@ const BENEFITS = [
 ];
 
 export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: FinishStepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [available, setAvailable] = useState<AvailablePlans>({ monthly: null, annual: null });
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -86,6 +90,7 @@ export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: F
       return;
     }
     // Mock / preview mode (Expo Go, no keys): simulate the trial locally.
+    await setMockPremium(true);
     choosePlan('trial');
     next();
   };
@@ -239,6 +244,8 @@ export function AccountStep({
   next,
 }: FinishStepProps) {
   const signedIn = Boolean(user);
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   return (
     <OnboardingLayout
@@ -285,6 +292,9 @@ export function AccountStep({
 }
 
 export function DoneStep({ finish, goDashboard }: FinishStepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
   return (
     <OnboardingLayout
       footer={<PrimaryButton title="Go to my dashboard" onPress={goDashboard} />}>
@@ -305,191 +315,193 @@ export function DoneStep({ finish, goDashboard }: FinishStepProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  footerStack: {
-    gap: 6,
-  },
-  picoPaywallHeader: {
-    paddingBottom: 8,
-    alignItems: 'center',
-  },
-  skip: {
-    textAlign: 'center',
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 22,
-    textDecorationLine: 'underline',
-    paddingVertical: 6,
-  },
-  benefits: {
-    gap: 10,
-  },
-  benefitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  check: {
-    color: Palette.leafDeep,
-    fontSize: 16,
-    lineHeight: 22,
-    fontFamily: 'Inter_700Bold',
-    width: 20,
-  },
-  benefitText: {
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 22,
-    color: Palette.ink,
-  },
-  plans: {
-    gap: 12,
-  },
-  checking: {
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 22,
-    textAlign: 'center',
-    paddingVertical: 24,
-  },
-  premiumCard: {
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Palette.leaf,
-    backgroundColor: Palette.leafSoft,
-    padding: 24,
-    gap: 8,
-    alignItems: 'center',
-  },
-  premiumTitle: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 22,
-    lineHeight: 28,
-    color: Palette.leafDeep,
-  },
-  premiumBody: {
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  plan: {
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    padding: 20,
-    gap: 4,
-  },
-  planRecommended: {
-    borderColor: Palette.outline,
-  },
-  planSelected: {
-    borderColor: Palette.berry,
-    backgroundColor: Palette.berrySoft,
-  },
-  pressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.99 }],
-  },
-  planTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  planTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
-    color: Palette.ink,
-  },
-  planPill: {
-    borderRadius: 999,
-    backgroundColor: Palette.surfaceSunken,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  planPillRecommended: {
-    backgroundColor: Palette.berry,
-  },
-  planPillText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: Palette.inkMuted,
-    fontFamily: 'Inter_700Bold',
-  },
-  planPillTextRecommended: {
-    color: '#FFFFFF',
-  },
-  planPrice: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 30,
-    lineHeight: 38,
-    color: Palette.ink,
-  },
-  planPeriod: {
-    fontFamily: Fonts.body,
-    fontSize: 16,
-    color: Palette.inkMuted,
-  },
-  planNote: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: Palette.inkMuted,
-  },
-  terms: {
-    color: Palette.inkSubtle,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  paywallError: {
-    color: Palette.coral,
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  restored: {
-    color: Palette.leafDeep,
-    fontSize: 15,
-    lineHeight: 20,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  accountWrap: {
-    alignItems: 'center',
-    gap: 12,
-    paddingTop: 24,
-  },
-  accountSigned: {
-    color: Palette.leafDeep,
-    fontSize: 17,
-    lineHeight: 26,
-    textAlign: 'center',
-    maxWidth: 320,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  accountHint: {
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    maxWidth: 320,
-  },
-  doneWrap: {
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 24,
-  },
-  doneTitle: {
-    fontSize: 32,
-    marginTop: 8,
-  },
-  doneBody: {
-    color: Palette.inkMuted,
-    fontSize: 17,
-    lineHeight: 26,
-  },
-  doneHint: {
-    color: Palette.inkSubtle,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    footerStack: {
+      gap: 6,
+    },
+    picoPaywallHeader: {
+      paddingBottom: 8,
+      alignItems: 'center',
+    },
+    skip: {
+      textAlign: 'center',
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 22,
+      textDecorationLine: 'underline',
+      paddingVertical: 6,
+    },
+    benefits: {
+      gap: 10,
+    },
+    benefitRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    check: {
+      color: palette.leafDeep,
+      fontSize: 16,
+      lineHeight: 22,
+      fontFamily: 'Inter_700Bold',
+      width: 20,
+    },
+    benefitText: {
+      flex: 1,
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.ink,
+    },
+    plans: {
+      gap: 12,
+    },
+    checking: {
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 22,
+      textAlign: 'center',
+      paddingVertical: 24,
+    },
+    premiumCard: {
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: palette.leaf,
+      backgroundColor: palette.leafSoft,
+      padding: 24,
+      gap: 8,
+      alignItems: 'center',
+    },
+    premiumTitle: {
+      fontFamily: 'Inter_700Bold',
+      fontSize: 22,
+      lineHeight: 28,
+      color: palette.leafDeep,
+    },
+    premiumBody: {
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 24,
+      textAlign: 'center',
+    },
+    plan: {
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      padding: 20,
+      gap: 4,
+    },
+    planRecommended: {
+      borderColor: palette.outline,
+    },
+    planSelected: {
+      borderColor: palette.berry,
+      backgroundColor: palette.berrySoft,
+    },
+    pressed: {
+      opacity: 0.75,
+      transform: [{ scale: 0.99 }],
+    },
+    planTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    planTitle: {
+      fontFamily: 'Inter_600SemiBold',
+      fontSize: 18,
+      lineHeight: 24,
+      color: palette.ink,
+    },
+    planPill: {
+      borderRadius: 999,
+      backgroundColor: palette.surfaceSunken,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    planPillRecommended: {
+      backgroundColor: palette.berry,
+    },
+    planPillText: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: palette.inkMuted,
+      fontFamily: 'Inter_700Bold',
+    },
+    planPillTextRecommended: {
+      color: '#FFFFFF',
+    },
+    planPrice: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 30,
+      lineHeight: 38,
+      color: palette.ink,
+    },
+    planPeriod: {
+      fontFamily: Fonts.body,
+      fontSize: 16,
+      color: palette.inkMuted,
+    },
+    planNote: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: palette.inkMuted,
+    },
+    terms: {
+      color: palette.inkSubtle,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    paywallError: {
+      color: palette.coral,
+      fontSize: 15,
+      lineHeight: 20,
+    },
+    restored: {
+      color: palette.leafDeep,
+      fontSize: 15,
+      lineHeight: 20,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    accountWrap: {
+      alignItems: 'center',
+      gap: 12,
+      paddingTop: 24,
+    },
+    accountSigned: {
+      color: palette.leafDeep,
+      fontSize: 17,
+      lineHeight: 26,
+      textAlign: 'center',
+      maxWidth: 320,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    accountHint: {
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 24,
+      textAlign: 'center',
+      maxWidth: 320,
+    },
+    doneWrap: {
+      alignItems: 'center',
+      gap: 8,
+      paddingTop: 24,
+    },
+    doneTitle: {
+      fontSize: 32,
+      marginTop: 8,
+    },
+    doneBody: {
+      color: palette.inkMuted,
+      fontSize: 17,
+      lineHeight: 26,
+    },
+    doneHint: {
+      color: palette.inkSubtle,
+      fontSize: 15,
+      lineHeight: 22,
+    },
+  });
+}

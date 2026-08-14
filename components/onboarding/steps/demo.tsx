@@ -6,7 +6,8 @@ import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { TextField } from '@/components/ui/text-field';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 import type { OnboardingState } from '@/lib/onboarding';
 import { parseAmountOnly, parseNote } from '@/lib/parser';
 import { canAffordPurchase, computeSafeToSpend, daysUntil, type SafeSpendResult } from '@/lib/safe-spend';
@@ -37,6 +38,8 @@ function whole(n: number): number {
 }
 
 export function CalculatingStep({ value, next, money }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [stage, setStage] = useState(0);
   const result = useMemo(
     () => computeSafeToSpend(safeInput(value, 0) as Parameters<typeof computeSafeToSpend>[0]),
@@ -92,6 +95,8 @@ export function CalculatingStep({ value, next, money }: StepProps) {
 }
 
 export function AhaStep({ value, next, money }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const result = useMemo(
     () => computeSafeToSpend(safeInput(value, 0) as Parameters<typeof computeSafeToSpend>[0]),
     [value],
@@ -127,6 +132,8 @@ export function TrackStep({
   symbol,
   addTransaction,
 }: StepProps & { addTransaction: (parsed: NonNullable<OnboardingState['demo']['parsed']>) => string }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [text, setText] = useState(`Spent ${symbol}25 on lunch`);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -169,7 +176,7 @@ export function TrackStep({
         value={text}
         onChangeText={setText}
         placeholder="What happened with your money?"
-        placeholderTextColor={Palette.inkFaint}
+        placeholderTextColor={palette.inkFaint}
         autoCapitalize="none"
         autoCorrect={false}
       />
@@ -198,6 +205,8 @@ export function TrackStep({
 }
 
 export function AdjustStep({ value, next, back, money }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const demoAmount = value.demo.parsed?.amount ?? 0;
   const before = useMemo(
     () => computeSafeToSpend(safeInput(value, 0) as Parameters<typeof computeSafeToSpend>[0]),
@@ -238,6 +247,8 @@ export function AdjustStep({ value, next, back, money }: StepProps) {
 }
 
 export function AffordStep({ value, next, back, money, symbol }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [text, setText] = useState(`Can I buy ${symbol}120 shoes?`);
   const [result, setResult] = useState<(SafeSpendResult & { affordable: boolean }) | null>(null);
 
@@ -277,17 +288,17 @@ export function AffordStep({ value, next, back, money, symbol }: StepProps) {
           setResult(null);
         }}
         placeholder={`Can I buy ${symbol}120 shoes?`}
-        placeholderTextColor={Palette.inkFaint}
+        placeholderTextColor={palette.inkFaint}
         autoCapitalize="none"
         autoCorrect={false}
         onSubmitEditing={run}
       />
 
       {result ? (
-        <View style={[styles.affordCard, { borderColor: result.affordable ? Palette.leaf : Palette.coral }]}>
+        <View style={[styles.affordCard, { borderColor: result.affordable ? palette.leaf : palette.coral }]}>
           <ThemedText
             type="title"
-            style={{ color: result.affordable ? Palette.leafDeep : Palette.coral, fontSize: 26, lineHeight: 34 }}>
+            style={{ color: result.affordable ? palette.leafDeep : palette.coral, fontSize: 26, lineHeight: 34 }}>
             {result.affordable ? '✅ Yes, you can.' : '❌ Not quite.'}
           </ThemedText>
           <ThemedText style={styles.affordBody}>
@@ -309,6 +320,8 @@ export function AffordStep({ value, next, back, money, symbol }: StepProps) {
 }
 
 export function SummaryStep({ value, next, back, money }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const result = useMemo(
     () => computeSafeToSpend(safeInput(value, 0) as Parameters<typeof computeSafeToSpend>[0]),
     [value],
@@ -355,268 +368,270 @@ export function SummaryStep({ value, next, back, money }: StepProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  calcWrap: {
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 24,
-  },
-  calcTitle: {
-    fontSize: 30,
-    marginTop: 8,
-  },
-  calcSub: {
-    color: Palette.inkMuted,
-    fontSize: 17,
-    lineHeight: 26,
-  },
-  lines: {
-    gap: 2,
-  },
-  line: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Palette.outline,
-  },
-  lineLabel: {
-    fontSize: 17,
-    lineHeight: 24,
-    color: Palette.ink,
-  },
-  lineAmount: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 20,
-    lineHeight: 26,
-    color: Palette.ink,
-  },
-  lineAmountHighlight: {
-    color: Palette.berry,
-    fontSize: 24,
-  },
-  ahaWrap: {
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 24,
-  },
-  ahaTitle: {
-    fontSize: 30,
-    marginTop: 8,
-  },
-  ahaNumberCard: {
-    alignItems: 'center',
-    gap: 2,
-    borderRadius: 24,
-    backgroundColor: Palette.berrySoft,
-    paddingHorizontal: 40,
-    paddingVertical: 24,
-    marginTop: 8,
-  },
-  ahaNumber: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 64,
-    lineHeight: 72,
-    color: Palette.berry,
-    letterSpacing: -2,
-  },
-  ahaLabel: {
-    fontSize: 17,
-    lineHeight: 24,
-    color: Palette.berry,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  ahaBody: {
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    maxWidth: 340,
-  },
-  ahaNote: {
-    color: Palette.inkSubtle,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    maxWidth: 340,
-  },
-  footerStack: {
-    gap: 6,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  footerFlex: {
-    flex: 1,
-  },
-  skip: {
-    textAlign: 'center',
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 22,
-    textDecorationLine: 'underline',
-    paddingVertical: 6,
-  },
-  resultCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    padding: 16,
-    gap: 10,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  resultDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Palette.leafDeep,
-  },
-  resultText: {
-    flex: 1,
-    gap: 1,
-  },
-  resultTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 17,
-    lineHeight: 22,
-    color: Palette.ink,
-  },
-  resultMeta: {
-    fontSize: 14,
-    lineHeight: 18,
-    color: Palette.inkMuted,
-  },
-  resultAmount: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: Palette.ink,
-  },
-  resultFound: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: Palette.leafDeep,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  error: {
-    color: Palette.coral,
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  beforeAfter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  baCard: {
-    flex: 1,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    padding: 16,
-    gap: 4,
-  },
-  baCardAfter: {
-    borderColor: Palette.berry,
-    backgroundColor: Palette.berrySoft,
-  },
-  baLabel: {
-    fontSize: 14,
-    lineHeight: 18,
-    color: Palette.inkMuted,
-  },
-  baValue: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 26,
-    lineHeight: 32,
-    color: Palette.ink,
-  },
-  baArrow: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  baArrowText: {
-    fontSize: 20,
-    color: Palette.inkSubtle,
-  },
-  adjustBody: {
-    color: Palette.inkMuted,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  adjustNote: {
-    color: Palette.inkSubtle,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  affordCard: {
-    borderRadius: 20,
-    borderWidth: 2,
-    padding: 20,
-    gap: 10,
-    backgroundColor: Palette.surface,
-  },
-  affordBody: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: Palette.inkMuted,
-  },
-  affordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  affordRowLabel: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: Palette.inkMuted,
-  },
-  affordRowValue: {
-    flex: 1,
-    textAlign: 'right',
-    fontFamily: Fonts.monoBold,
-    fontSize: 15,
-    lineHeight: 20,
-    color: Palette.ink,
-  },
-  summaryCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    padding: 18,
-    gap: 4,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Palette.outline,
-  },
-  summaryLabel: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: Palette.inkMuted,
-  },
-  summaryValue: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 17,
-    lineHeight: 22,
-    color: Palette.ink,
-  },
-  summaryValueHighlight: {
-    color: Palette.berry,
-    fontSize: 20,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    calcWrap: {
+      alignItems: 'center',
+      gap: 8,
+      paddingTop: 24,
+    },
+    calcTitle: {
+      fontSize: 30,
+      marginTop: 8,
+    },
+    calcSub: {
+      color: palette.inkMuted,
+      fontSize: 17,
+      lineHeight: 26,
+    },
+    lines: {
+      gap: 2,
+    },
+    line: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.outline,
+    },
+    lineLabel: {
+      fontSize: 17,
+      lineHeight: 24,
+      color: palette.ink,
+    },
+    lineAmount: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 20,
+      lineHeight: 26,
+      color: palette.ink,
+    },
+    lineAmountHighlight: {
+      color: palette.berry,
+      fontSize: 24,
+    },
+    ahaWrap: {
+      alignItems: 'center',
+      gap: 10,
+      paddingTop: 24,
+    },
+    ahaTitle: {
+      fontSize: 30,
+      marginTop: 8,
+    },
+    ahaNumberCard: {
+      alignItems: 'center',
+      gap: 2,
+      borderRadius: 24,
+      backgroundColor: palette.berrySoft,
+      paddingHorizontal: 40,
+      paddingVertical: 24,
+      marginTop: 8,
+    },
+    ahaNumber: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 64,
+      lineHeight: 72,
+      color: palette.berry,
+      letterSpacing: -2,
+    },
+    ahaLabel: {
+      fontSize: 17,
+      lineHeight: 24,
+      color: palette.berry,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    ahaBody: {
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 24,
+      textAlign: 'center',
+      maxWidth: 340,
+    },
+    ahaNote: {
+      color: palette.inkSubtle,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: 'center',
+      maxWidth: 340,
+    },
+    footerStack: {
+      gap: 6,
+    },
+    footerRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    footerFlex: {
+      flex: 1,
+    },
+    skip: {
+      textAlign: 'center',
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 22,
+      textDecorationLine: 'underline',
+      paddingVertical: 6,
+    },
+    resultCard: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      padding: 16,
+      gap: 10,
+    },
+    resultRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    resultDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: palette.leafDeep,
+    },
+    resultText: {
+      flex: 1,
+      gap: 1,
+    },
+    resultTitle: {
+      fontFamily: 'Inter_600SemiBold',
+      fontSize: 17,
+      lineHeight: 22,
+      color: palette.ink,
+    },
+    resultMeta: {
+      fontSize: 14,
+      lineHeight: 18,
+      color: palette.inkMuted,
+    },
+    resultAmount: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 18,
+      lineHeight: 24,
+      color: palette.ink,
+    },
+    resultFound: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: palette.leafDeep,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    error: {
+      color: palette.coral,
+      fontSize: 15,
+      lineHeight: 20,
+    },
+    beforeAfter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    baCard: {
+      flex: 1,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      padding: 16,
+      gap: 4,
+    },
+    baCardAfter: {
+      borderColor: palette.berry,
+      backgroundColor: palette.berrySoft,
+    },
+    baLabel: {
+      fontSize: 14,
+      lineHeight: 18,
+      color: palette.inkMuted,
+    },
+    baValue: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 26,
+      lineHeight: 32,
+      color: palette.ink,
+    },
+    baArrow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    baArrowText: {
+      fontSize: 20,
+      color: palette.inkSubtle,
+    },
+    adjustBody: {
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 24,
+    },
+    adjustNote: {
+      color: palette.inkSubtle,
+      fontSize: 15,
+      lineHeight: 22,
+    },
+    affordCard: {
+      borderRadius: 20,
+      borderWidth: 2,
+      padding: 20,
+      gap: 10,
+      backgroundColor: palette.surface,
+    },
+    affordBody: {
+      fontSize: 16,
+      lineHeight: 24,
+      color: palette.inkMuted,
+    },
+    affordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    affordRowLabel: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: palette.inkMuted,
+    },
+    affordRowValue: {
+      flex: 1,
+      textAlign: 'right',
+      fontFamily: Fonts.monoBold,
+      fontSize: 15,
+      lineHeight: 20,
+      color: palette.ink,
+    },
+    summaryCard: {
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      padding: 18,
+      gap: 4,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.outline,
+    },
+    summaryLabel: {
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.inkMuted,
+    },
+    summaryValue: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 17,
+      lineHeight: 22,
+      color: palette.ink,
+    },
+    summaryValueHighlight: {
+      color: palette.berry,
+      fontSize: 20,
+    },
+  });
+}

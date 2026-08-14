@@ -1,6 +1,11 @@
 -- Budget Planner: run this in the Supabase SQL editor.
 -- Set up the transactions table with row-level security so each user
 -- only ever sees their own rows.
+--
+-- Setup note: for "Continue as guest" to work, enable the Anonymous provider
+-- in the dashboard: Authentication → Sign In / Providers → Anonymous. Guest
+-- users are real (anonymous) auth.users rows, so every table + RLS policy
+-- below works for them automatically.
 
 create table if not exists public.transactions (
   id uuid primary key default gen_random_uuid(),

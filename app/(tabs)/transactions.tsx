@@ -6,8 +6,9 @@ import { Card } from '@/components/card';
 import { Pico } from '@/components/pico';
 import { ThemedText } from '@/components/themed-text';
 import { TransactionRow } from '@/components/transaction-row';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 import type { TransactionType } from '@/lib/types';
 
 type Filter = 'all' | TransactionType;
@@ -20,6 +21,8 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 export default function TransactionsScreen() {
   const { transactions, deleteTransaction, money } = useBudget();
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [filter, setFilter] = useState<Filter>('all');
 
   const filtered = useMemo(() => {
@@ -43,11 +46,11 @@ export default function TransactionsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedText type="title">History</ThemedText>
-        <ThemedText style={{ color: Palette.inkMuted }}>
+        <ThemedText style={{ color: palette.inkMuted }}>
           Net balance change:{' '}
           <ThemedText
             type="defaultSemiBold"
-            style={{ color: total >= 0 ? Palette.leafDeep : Palette.coral }}>
+            style={{ color: total >= 0 ? palette.leafDeep : palette.coral }}>
             {total >= 0 ? '+' : '-'}
             {money(Math.abs(total))}
           </ThemedText>
@@ -66,7 +69,7 @@ export default function TransactionsScreen() {
                   active ? styles.filterActive : styles.filterInactive,
                 ]}>
                 <ThemedText
-                  style={[styles.filterText, active ? styles.filterTextActive : { color: Palette.inkMuted }]}>
+                  style={[styles.filterText, active ? styles.filterTextActive : { color: palette.inkMuted }]}>
                   {f.label}
                 </ThemedText>
               </Pressable>
@@ -95,45 +98,47 @@ export default function TransactionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Palette.background,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-    gap: 16,
-  },
-  filters: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filter: {
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  filterActive: {
-    backgroundColor: Palette.sky,
-  },
-  filterInactive: {
-    backgroundColor: Palette.surface,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-  },
-  filterText: {
-    fontFamily: Fonts.bodyBold,
-    fontSize: 16,
-  },
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-  emptyState: {
-    paddingVertical: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 40,
+      gap: 16,
+    },
+    filters: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    filter: {
+      borderRadius: 999,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    filterActive: {
+      backgroundColor: palette.sky,
+    },
+    filterInactive: {
+      backgroundColor: palette.surface,
+      borderWidth: 1,
+      borderColor: palette.outline,
+    },
+    filterText: {
+      fontFamily: Fonts.bodyBold,
+      fontSize: 16,
+    },
+    filterTextActive: {
+      color: '#FFFFFF',
+    },
+    emptyState: {
+      paddingVertical: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
+}

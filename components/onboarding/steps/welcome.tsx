@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout';
@@ -5,13 +6,14 @@ import { SelectionCard } from '@/components/onboarding/selection-card';
 import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
-import { Palette } from '@/constants/theme';
+import { type PaletteType } from '@/constants/theme';
 import {
   GOALS,
   PAY_FREQUENCIES,
   PROBLEMS,
   type OnboardingState,
 } from '@/lib/onboarding';
+import { useAppTheme } from '@/lib/theme';
 
 export type StepProps = {
   value: OnboardingState;
@@ -23,6 +25,9 @@ export type StepProps = {
 };
 
 export function WelcomeStep({ next }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
   return (
     <OnboardingLayout
       footer={
@@ -116,6 +121,9 @@ export function ProblemStep({ value, update, next, back }: StepProps) {
 }
 
 export function GoalStep({ value, update, next, back }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
   return (
     <OnboardingLayout
       title="What do you want Pico to help you with?"
@@ -158,125 +166,127 @@ export function PayFrequencyStep({ value, update, next, back }: StepProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  heroStage: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 32,
-    backgroundColor: Palette.berrySoft,
-    paddingTop: 24,
-    paddingBottom: 16,
-    marginTop: 4,
-    overflow: 'hidden',
-  },
-  heroGlow: {
-    position: 'absolute',
-    top: -70,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: Palette.berry,
-    opacity: 0.12,
-  },
-  heroBadge: {
-    alignSelf: 'flex-start',
-    marginLeft: 20,
-    marginTop: 4,
-    backgroundColor: Palette.berry,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  heroBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  heroMascot: {
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  heroText: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  heroTitle: {
-    fontSize: 34,
-    lineHeight: 42,
-  },
-  heroSub: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 18,
-    lineHeight: 26,
-    color: Palette.inkMuted,
-  },
-  features: {
-    gap: 14,
-    marginTop: 4,
-  },
-  feature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: Palette.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureIconLeaf: {
-    backgroundColor: Palette.leafSoft,
-  },
-  featureIconSky: {
-    backgroundColor: Palette.skySoft,
-  },
-  featureIconBerry: {
-    backgroundColor: Palette.berrySoft,
-  },
-  featureEmoji: {
-    fontSize: 22,
-  },
-  featureText: {
-    flex: 1,
-    gap: 2,
-  },
-  featureTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
-    lineHeight: 22,
-    color: Palette.ink,
-  },
-  featureBody: {
-    fontSize: 15,
-    lineHeight: 21,
-    color: Palette.inkMuted,
-  },
-  footerStack: {
-    gap: 8,
-  },
-  minutes: {
-    textAlign: 'center',
-    color: Palette.inkSubtle,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  gridItem: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    minWidth: 140,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    heroStage: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 32,
+      backgroundColor: palette.berrySoft,
+      paddingTop: 24,
+      paddingBottom: 16,
+      marginTop: 4,
+      overflow: 'hidden',
+    },
+    heroGlow: {
+      position: 'absolute',
+      top: -70,
+      width: 320,
+      height: 320,
+      borderRadius: 160,
+      backgroundColor: palette.berry,
+      opacity: 0.12,
+    },
+    heroBadge: {
+      alignSelf: 'flex-start',
+      marginLeft: 20,
+      marginTop: 4,
+      backgroundColor: palette.berry,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 999,
+    },
+    heroBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      lineHeight: 18,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    heroMascot: {
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    heroText: {
+      alignItems: 'center',
+      gap: 4,
+    },
+    heroTitle: {
+      fontSize: 34,
+      lineHeight: 42,
+    },
+    heroSub: {
+      fontFamily: 'Inter_600SemiBold',
+      fontSize: 18,
+      lineHeight: 26,
+      color: palette.inkMuted,
+    },
+    features: {
+      gap: 14,
+      marginTop: 4,
+    },
+    feature: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: palette.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    featureIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featureIconLeaf: {
+      backgroundColor: palette.leafSoft,
+    },
+    featureIconSky: {
+      backgroundColor: palette.skySoft,
+    },
+    featureIconBerry: {
+      backgroundColor: palette.berrySoft,
+    },
+    featureEmoji: {
+      fontSize: 22,
+    },
+    featureText: {
+      flex: 1,
+      gap: 2,
+    },
+    featureTitle: {
+      fontFamily: 'Inter_600SemiBold',
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.ink,
+    },
+    featureBody: {
+      fontSize: 15,
+      lineHeight: 21,
+      color: palette.inkMuted,
+    },
+    footerStack: {
+      gap: 8,
+    },
+    minutes: {
+      textAlign: 'center',
+      color: palette.inkSubtle,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    gridItem: {
+      flexBasis: '47%',
+      flexGrow: 1,
+      minWidth: 140,
+    },
+  });
+}

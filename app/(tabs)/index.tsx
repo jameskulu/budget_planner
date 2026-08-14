@@ -18,16 +18,19 @@ import { ThemedText } from '@/components/themed-text';
 import { TransactionRow } from '@/components/transaction-row';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TextField } from '@/components/ui/text-field';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { formatDateIso } from '@/lib/format';
 import { parseNote } from '@/lib/parser';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 
 export default function OverviewScreen() {
   const { user } = useAuth();
   const { snapshot, transactions, monthly, addNote, deleteTransaction, money } = useBudget();
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const userName =
     user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? null;
@@ -76,7 +79,7 @@ export default function OverviewScreen() {
               accessibilityLabel="Menu"
               onPress={() => router.push('/profile')}
               style={styles.navButton}>
-              <IconSymbol name="line.3.horizontal" size={22} color={Palette.ink} />
+              <IconSymbol name="line.3.horizontal" size={22} color={palette.ink} />
             </Pressable>
 
             <Pressable
@@ -84,7 +87,7 @@ export default function OverviewScreen() {
               accessibilityLabel="Notifications"
               onPress={() => router.push('/notifications')}
               style={styles.navButton}>
-              <IconSymbol name="bell.fill" size={20} color={Palette.ink} />
+              <IconSymbol name="bell.fill" size={20} color={palette.ink} />
             </Pressable>
           </View>
 
@@ -129,12 +132,12 @@ export default function OverviewScreen() {
 
             <View style={styles.summaryRow}>
               <View style={styles.rowLeft}>
-                <View style={[styles.iconBox, { backgroundColor: '#E2F3E5' }]}>
+                <View style={[styles.iconBox, { backgroundColor: palette.leafSoft }]}>
                   <ThemedText style={{ fontSize: 18 }}>👛</ThemedText>
                 </View>
                 <ThemedText style={styles.rowLabel}>Income</ThemedText>
               </View>
-              <ThemedText style={[styles.rowValue, { color: '#2D7A41' }]}>
+              <ThemedText style={[styles.rowValue, { color: palette.leafDeep }]}>
                 {money(snapshot.monthIncome)}
               </ThemedText>
             </View>
@@ -143,12 +146,12 @@ export default function OverviewScreen() {
 
             <View style={styles.summaryRow}>
               <View style={styles.rowLeft}>
-                <View style={[styles.iconBox, { backgroundColor: '#FDEAE8' }]}>
+                <View style={[styles.iconBox, { backgroundColor: palette.coralSoft }]}>
                   <ThemedText style={{ fontSize: 18 }}>📕</ThemedText>
                 </View>
                 <ThemedText style={styles.rowLabel}>Spent</ThemedText>
               </View>
-              <ThemedText style={[styles.rowValue, { color: '#2B303A' }]}>
+              <ThemedText style={[styles.rowValue, { color: palette.ink }]}>
                 {money(snapshot.monthSpent)}
               </ThemedText>
             </View>
@@ -157,12 +160,12 @@ export default function OverviewScreen() {
 
             <View style={styles.summaryRow}>
               <View style={styles.rowLeft}>
-                <View style={[styles.iconBox, { backgroundColor: '#F3E8FF' }]}>
+                <View style={[styles.iconBox, { backgroundColor: palette.berrySoft }]}>
                   <ThemedText style={{ fontSize: 18 }}>📈</ThemedText>
                 </View>
                 <ThemedText style={styles.rowLabel}>Invested</ThemedText>
               </View>
-              <ThemedText style={[styles.rowValue, { color: '#7C3AED' }]}>
+              <ThemedText style={[styles.rowValue, { color: palette.berry }]}>
                 {money(snapshot.monthInvested)}
               </ThemedText>
             </View>
@@ -171,12 +174,12 @@ export default function OverviewScreen() {
 
             <View style={styles.summaryRow}>
               <View style={styles.rowLeft}>
-                <View style={[styles.iconBox, { backgroundColor: '#FDEAE8' }]}>
+                <View style={[styles.iconBox, { backgroundColor: palette.coralSoft }]}>
                   <ThemedText style={{ fontSize: 18 }}>🐷</ThemedText>
                 </View>
                 <ThemedText style={styles.rowLabel}>Saved</ThemedText>
               </View>
-              <ThemedText style={[styles.rowValue, { color: '#2D7A41' }]}>
+              <ThemedText style={[styles.rowValue, { color: palette.leafDeep }]}>
                 {money(Math.max(0, snapshot.monthIncome - snapshot.monthSpent - snapshot.monthInvested))}
               </ThemedText>
             </View>
@@ -188,7 +191,7 @@ export default function OverviewScreen() {
               <ThemedText style={styles.planLinkText}>
                 Monthly recurring income & bills
               </ThemedText>
-              <IconSymbol name="chevron.right" size={18} color={Palette.inkSubtle} />
+              <IconSymbol name="chevron.right" size={18} color={palette.inkSubtle} />
             </Pressable>
 
             <Pressable
@@ -196,14 +199,14 @@ export default function OverviewScreen() {
               onPress={() => router.push('/insights')}
               style={({ pressed }) => [styles.planLink, pressed && styles.planLinkPressed]}>
               <ThemedText style={styles.planLinkText}>View all insights</ThemedText>
-              <IconSymbol name="chevron.right" size={18} color={Palette.inkSubtle} />
+              <IconSymbol name="chevron.right" size={18} color={palette.inkSubtle} />
             </Pressable>
           </View>
 
           {/* Natural Language Logging */}
           <Card>
             <ThemedText type="subtitle">What happened?</ThemedText>
-            <ThemedText style={{ color: Palette.inkMuted, fontSize: 16, lineHeight: 22 }}>
+            <ThemedText style={{ color: palette.inkMuted, fontSize: 16, lineHeight: 22 }}>
               Write it in plain words — Pico sorts out the rest.
             </ThemedText>
             <TextField
@@ -211,7 +214,7 @@ export default function OverviewScreen() {
               value={note}
               onChangeText={setNote}
               placeholder="e.g. spent 45 on groceries, got paid 500 salary"
-              placeholderTextColor={Palette.inkFaint}
+              placeholderTextColor={palette.inkFaint}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="done"
@@ -227,7 +230,7 @@ export default function OverviewScreen() {
             {dictState.listening ? (
               <ThemedText style={styles.dictHint}>Listening… say it. Tap the mic to stop.</ThemedText>
             ) : dictState.message ? (
-              <ThemedText style={[styles.dictHint, { color: Palette.coral }]}>
+              <ThemedText style={[styles.dictHint, { color: palette.coral }]}>
                 {dictState.message}
               </ThemedText>
             ) : null}
@@ -239,7 +242,7 @@ export default function OverviewScreen() {
                       <View
                         style={[
                           styles.previewDot,
-                          { backgroundColor: CATEGORY_MAP[p.category]?.color ?? Palette.inkSubtle },
+                          { backgroundColor: CATEGORY_MAP[p.category]?.color ?? palette.inkSubtle },
                         ]}
                       />
                       <ThemedText style={{ flex: 1, fontSize: 16, lineHeight: 22 }}>
@@ -252,14 +255,14 @@ export default function OverviewScreen() {
                     </View>
                   ))
                 ) : (
-                  <ThemedText style={{ color: Palette.coral, fontSize: 16 }}>
+                  <ThemedText style={{ color: palette.coral, fontSize: 16 }}>
                     {preview.error}
                   </ThemedText>
                 )}
               </View>
             ) : null}
             {feedback ? (
-              <ThemedText style={{ color: Palette.sky, fontSize: 16 }}>{feedback}</ThemedText>
+              <ThemedText style={{ color: palette.sky, fontSize: 16 }}>{feedback}</ThemedText>
             ) : null}
             <PrimaryButton title="Add" onPress={handleAddNote} />
           </Card>
@@ -268,7 +271,7 @@ export default function OverviewScreen() {
           <Card>
             <ThemedText type="subtitle">Recent</ThemedText>
             {recent.length === 0 ? (
-              <ThemedText style={{ color: Palette.inkSubtle }}>
+              <ThemedText style={{ color: palette.inkSubtle }}>
                 Nothing yet — write your first note above.
               </ThemedText>
             ) : (
@@ -283,192 +286,194 @@ export default function OverviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#FAF7F2',
-  },
-  content: {
-    padding: 20,
-    paddingTop: 4,
-    paddingBottom: 40,
-    gap: 16,
-  },
-  topNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 0,
-  },
-  navButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroSection: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginTop: -30,
-    marginBottom: -8,
-    zIndex: 10,
-  },
-  heroTextGroup: {
-    gap: 4,
-    paddingBottom: 8,
-  },
-  greetingSub: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#2B303A',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  greetingTitle: {
-    fontSize: 26,
-    lineHeight: 32,
-    fontFamily: Fonts.display,
-    color: '#1B1F28',
-  },
-  peekingWrapper: {
-    marginRight: 8,
-    marginBottom: -46,
-  },
-  safeSpendCard: {
-    backgroundColor: '#E5F1E8',
-    borderRadius: 24,
-    padding: 22,
-    gap: 6,
-  },
-  safeSpendLabel: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: '#3B684A',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  safeSpendAmount: {
-    fontSize: 52,
-    lineHeight: 60,
-    fontFamily: Fonts.monoBold,
-    color: '#226035',
-    letterSpacing: -1,
-  },
-  safeSpendUnit: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: '#3B684A',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  safeSpendReserved: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#3B684A',
-    fontFamily: 'Inter_500Medium',
-    opacity: 0.85,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 12,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#C8E2CF',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#226035',
-    borderRadius: 4,
-  },
-  smileyEmoji: {
-    fontSize: 22,
-    lineHeight: 26,
-  },
-  thisMonthCard: {
-    backgroundColor: '#FFFBF6',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#EFE8DE',
-    padding: 20,
-    gap: 14,
-  },
-  thisMonthTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontFamily: Fonts.display,
-    color: '#1B1F28',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowLabel: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#1B1F28',
-  },
-  rowValue: {
-    fontFamily: Fonts.monoBold,
-    fontSize: 17,
-    lineHeight: 22,
-  },
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#EFE8DE',
-  },
-  planLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingTop: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EFE8DE',
-  },
-  planLinkPressed: {
-    opacity: 0.6,
-  },
-  planLinkText: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#3B684A',
-  },
-  previewList: {
-    gap: 8,
-  },
-  preview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  previewDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  dictHint: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: Palette.inkMuted,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    content: {
+      padding: 20,
+      paddingTop: 4,
+      paddingBottom: 40,
+      gap: 16,
+    },
+    topNavRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 0,
+    },
+    navButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroSection: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      marginTop: -30,
+      marginBottom: -8,
+      zIndex: 10,
+    },
+    heroTextGroup: {
+      gap: 4,
+      paddingBottom: 8,
+    },
+    greetingSub: {
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.ink,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    greetingTitle: {
+      fontSize: 26,
+      lineHeight: 32,
+      fontFamily: Fonts.display,
+      color: palette.ink,
+    },
+    peekingWrapper: {
+      marginRight: 8,
+      marginBottom: -46,
+    },
+    safeSpendCard: {
+      backgroundColor: palette.leafSoft,
+      borderRadius: 24,
+      padding: 22,
+      gap: 6,
+    },
+    safeSpendLabel: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: palette.leafDeep,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    safeSpendAmount: {
+      fontSize: 52,
+      lineHeight: 60,
+      fontFamily: Fonts.monoBold,
+      color: palette.leafDeep,
+      letterSpacing: -1,
+    },
+    safeSpendUnit: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: palette.leafDeep,
+      fontFamily: 'Inter_600SemiBold',
+    },
+    safeSpendReserved: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: palette.leafDeep,
+      fontFamily: 'Inter_500Medium',
+      opacity: 0.85,
+    },
+    progressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 12,
+    },
+    progressTrack: {
+      flex: 1,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: palette.surfaceSunken,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: palette.leafDeep,
+      borderRadius: 4,
+    },
+    smileyEmoji: {
+      fontSize: 22,
+      lineHeight: 26,
+    },
+    thisMonthCard: {
+      backgroundColor: palette.surface,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      padding: 20,
+      gap: 14,
+    },
+    thisMonthTitle: {
+      fontSize: 18,
+      lineHeight: 24,
+      fontFamily: Fonts.display,
+      color: palette.ink,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    rowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    iconBox: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowLabel: {
+      fontSize: 16,
+      lineHeight: 22,
+      fontFamily: 'Inter_600SemiBold',
+      color: palette.ink,
+    },
+    rowValue: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 17,
+      lineHeight: 22,
+    },
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: palette.outline,
+    },
+    planLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingTop: 14,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: palette.outline,
+    },
+    planLinkPressed: {
+      opacity: 0.6,
+    },
+    planLinkText: {
+      fontSize: 15,
+      lineHeight: 20,
+      fontFamily: 'Inter_600SemiBold',
+      color: palette.leafDeep,
+    },
+    previewList: {
+      gap: 8,
+    },
+    preview: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    previewDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    dictHint: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: palette.inkMuted,
+    },
+  });
+}

@@ -1,17 +1,27 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import type { RecurringItem } from '@/lib/recurring';
+
 export type NotificationPrefs = {
   /** Daily "safe to spend today" reminder. */
   dailyReminder: boolean;
   /** Reminder when a bill is due soon. */
   billReminders: boolean;
+  /** How many days ahead of a due date bill reminders fire. */
+  billAdvanceDays: number;
+  /** Reminder when a recurring investment is due soon. */
+  investmentReminders: boolean;
 };
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   dailyReminder: true,
   billReminders: true,
+  billAdvanceDays: 3,
+  investmentReminders: false,
 };
+
+export const ADVANCE_DAY_OPTIONS = [1, 3, 7] as const;
 
 export const NOTIFICATION_CHANNEL_ID = 'budget-planner-reminders';
 
@@ -50,11 +60,21 @@ export async function hasNotificationPermission(): Promise<boolean> {
   return status.granted;
 }
 
+/** Clamps a day-of-month into 1..28 so monthly triggers always fire. */
+function clampDay(day: number): number {
+  if (Number.isFinite(day)) return Math.max(1, Math.min(28, Math.round(day)));
+  return 1;
+}
+
 /**
  * Applies the current prefs to the OS: schedules (or cancels) the daily
- * reminder. Returns the new permission state.
+ * reminder, per-recurring bill reminders, and per-recurring investment
+ * reminders. Returns the new permission state.
  */
-export async function syncNotifications(prefs: NotificationPrefs): Promise<void> {
+export async function syncNotifications(
+  prefs: NotificationPrefs,
+  recurring: RecurringItem[] = [],
+): Promise<void> {
   if (Platform.OS === 'web') return;
   await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -75,19 +95,49 @@ export async function syncNotifications(prefs: NotificationPrefs): Promise<void>
   }
 
   if (prefs.billReminders) {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Pico 🐾',
-        body: 'A bill is due soon. Make sure it is covered.',
-        data: { url: '/(tabs)' },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: 18,
-        minute: 0,
-        channelId: NOTIFICATION_CHANNEL_ID,
-      },
-    });
+    const bills = recurring.filter((r) => r.type === 'expense');
+    for (const bill of bills) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `Pico 🐾 ${bill.label}`,
+          body:
+            prefs.billAdvanceDays > 0
+              ? `Due in ${prefs.billAdvanceDays} day${prefs.billAdvanceDays === 1 ? '' : 's'} (${bill.label}). Make sure it's covered.`
+              : `${bill.label} is due today. Make sure it's covered.`,
+          data: { url: '/(tabs)' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.MONTHLY,
+          day: clampDay(bill.day - prefs.billAdvanceDays),
+          hour: 10,
+          minute: 0,
+          channelId: NOTIFICATION_CHANNEL_ID,
+        },
+      });
+    }
+  }
+
+  if (prefs.investmentReminders) {
+    const investments = recurring.filter((r) => r.type === 'investment');
+    for (const inv of investments) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `Pico 🐾 ${inv.label}`,
+          body:
+            prefs.billAdvanceDays > 0
+              ? `Investment due in ${prefs.billAdvanceDays} day${prefs.billAdvanceDays === 1 ? '' : 's'} (${inv.label}).`
+              : `${inv.label} is due today.`,
+          data: { url: '/(tabs)' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.MONTHLY,
+          day: clampDay(inv.day - prefs.billAdvanceDays),
+          hour: 10,
+          minute: 0,
+          channelId: NOTIFICATION_CHANNEL_ID,
+        },
+      });
+    }
   }
 }
 
@@ -111,16 +161,20 @@ export async function getScheduledReminders(): Promise<ScheduledReminder[]> {
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     return scheduled.map((n) => {
-      const trigger = n.trigger as { type?: string; hour?: number; minute?: number; channelId?: string };
+      const trigger = n.trigger as { type?: string; hour?: number; minute?: number; day?: number; channelId?: string };
       const hour = typeof trigger?.hour === 'number' ? trigger.hour : 9;
       const minute = typeof trigger?.minute === 'number' ? trigger.minute : 0;
+      const day = typeof trigger?.day === 'number' ? trigger.day : null;
+      const isMonthly = trigger.type === Notifications.SchedulableTriggerInputTypes.MONTHLY;
       return {
         id: n.identifier,
         title: n.content.title ?? 'Pico 🐾',
         body: n.content.body ?? '',
-        schedule: trigger.type === Notifications.SchedulableTriggerInputTypes.DAILY
-          ? `${formatHour(hour, minute)} · daily`
-          : 'scheduled',
+        schedule: isMonthly
+          ? `day ${day} · monthly`
+          : trigger.type === Notifications.SchedulableTriggerInputTypes.DAILY
+            ? `${formatHour(hour, minute)} · daily`
+            : 'scheduled',
       };
     });
   } catch {

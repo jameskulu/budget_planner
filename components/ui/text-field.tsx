@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   StyleSheet,
   TextInput,
@@ -6,7 +6,8 @@ import {
   View,
 } from 'react-native';
 
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
 
 type TextFieldProps = TextInputProps & {
   /** Render at kid-friendly size: taller hit area, larger text. */
@@ -21,10 +22,12 @@ type TextFieldProps = TextInputProps & {
  */
 export function TextField({ big = false, style, onFocus, onBlur, right, ...rest }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const input = (
     <TextInput
-      placeholderTextColor={Palette.inkFaint}
+      placeholderTextColor={palette.inkFaint}
       style={[
         styles.input,
         !!right && styles.inputWithRight,
@@ -58,55 +61,57 @@ export function TextField({ big = false, style, onFocus, onBlur, right, ...rest 
   );
 }
 
-const styles = StyleSheet.create({
-  focusRing: {
-    borderRadius: 16,
-    padding: 4,
-    margin: -4,
-    backgroundColor: Palette.skySoft,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 18,
-    fontFamily: Fonts.body,
-    color: Palette.ink,
-  },
-  big: {
-    minHeight: 56,
-    fontSize: 20,
-  },
-  inputFocused: {
-    borderColor: Palette.sky,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Palette.outline,
-    backgroundColor: Palette.surface,
-    borderRadius: 12,
-    paddingLeft: 16,
-    paddingRight: 8,
-  },
-  rowBig: {
-    minHeight: 56,
-  },
-  rowFocused: {
-    borderColor: Palette.sky,
-  },
-  inputWithRight: {
-    flex: 1,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-    borderRadius: 0,
-    paddingLeft: 0,
-  },
-  rightSlot: {
-    marginLeft: 8,
-  },
-});
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
+    focusRing: {
+      borderRadius: 16,
+      padding: 4,
+      margin: -4,
+      backgroundColor: palette.skySoft,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 18,
+      fontFamily: Fonts.body,
+      color: palette.ink,
+    },
+    big: {
+      minHeight: 56,
+      fontSize: 20,
+    },
+    inputFocused: {
+      borderColor: palette.sky,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      borderRadius: 12,
+      paddingLeft: 16,
+      paddingRight: 8,
+    },
+    rowBig: {
+      minHeight: 56,
+    },
+    rowFocused: {
+      borderColor: palette.sky,
+    },
+    inputWithRight: {
+      flex: 1,
+      borderWidth: 0,
+      backgroundColor: 'transparent',
+      borderRadius: 0,
+      paddingLeft: 0,
+    },
+    rightSlot: {
+      marginLeft: 8,
+    },
+  });
+}

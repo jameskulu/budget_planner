@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,11 +9,14 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TextField } from '@/components/ui/text-field';
-import { Fonts, Palette } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
 import { useBudget } from '@/lib/store';
+import { useAppTheme } from '@/lib/theme';
 import type { RecurringItem } from '@/lib/recurring';
 
 function AddForm({ type }: { type: RecurringItem['type'] }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const { addRecurring } = useBudget();
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
@@ -52,7 +55,7 @@ function AddForm({ type }: { type: RecurringItem['type'] }) {
               ? 'e.g. Index fund'
               : 'e.g. Rent'
         }
-        placeholderTextColor={Palette.inkFaint}
+        placeholderTextColor={palette.inkFaint}
         style={styles.formLabel}
       />
       <View style={styles.formRow}>
@@ -60,7 +63,7 @@ function AddForm({ type }: { type: RecurringItem['type'] }) {
           value={amount}
           onChangeText={setAmount}
           placeholder="Amount"
-          placeholderTextColor={Palette.inkFaint}
+          placeholderTextColor={palette.inkFaint}
           keyboardType="numeric"
           style={styles.formAmount}
         />
@@ -68,7 +71,7 @@ function AddForm({ type }: { type: RecurringItem['type'] }) {
           value={day}
           onChangeText={setDay}
           placeholder="Day"
-          placeholderTextColor={Palette.inkFaint}
+          placeholderTextColor={palette.inkFaint}
           keyboardType="number-pad"
           style={styles.formDay}
         />
@@ -89,6 +92,8 @@ function RecurringList({
   emptyText: string;
   accent: string;
 }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const { deleteRecurring, money } = useBudget();
 
   if (items.length === 0) {
@@ -125,6 +130,8 @@ function RecurringList({
 }
 
 export default function PlanScreen() {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const { recurring, monthly, money } = useBudget();
 
   const income = recurring.filter((r) => r.type === 'income');
@@ -142,7 +149,7 @@ export default function PlanScreen() {
           keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Pressable accessibilityRole="button" hitSlop={8} onPress={() => router.back()}>
-              <IconSymbol name="chevron.left" size={28} color={Palette.ink} />
+              <IconSymbol name="chevron.left" size={28} color={palette.ink} />
             </Pressable>
             <ThemedText type="title">Monthly plan</ThemedText>
           </View>
@@ -158,7 +165,7 @@ export default function PlanScreen() {
           <Card style={styles.estimateCard}>
             <ThemedText style={styles.estimateLabel}>You could save</ThemedText>
             <ThemedText
-              style={[styles.estimateValue, { color: canSave ? Palette.leafDeep : Palette.coral }]}>
+              style={[styles.estimateValue, { color: canSave ? palette.leafDeep : palette.coral }]}>
               {money(monthly.savingsEstimate)}
               <ThemedText style={styles.estimatePerMonth}> / month</ThemedText>
             </ThemedText>
@@ -174,38 +181,38 @@ export default function PlanScreen() {
           </Card>
 
           <Card>
-            <ThemedText type="subtitle" style={{ color: Palette.leafDeep }}>
+            <ThemedText type="subtitle" style={{ color: palette.leafDeep }}>
               Monthly income
             </ThemedText>
             <AddForm type="income" />
             <RecurringList
               items={income}
               emptyText="No recurring income yet."
-              accent={Palette.leafDeep}
+              accent={palette.leafDeep}
             />
           </Card>
 
           <Card>
-            <ThemedText type="subtitle" style={{ color: Palette.coral }}>
+            <ThemedText type="subtitle" style={{ color: palette.coral }}>
               Fixed costs
             </ThemedText>
             <AddForm type="expense" />
             <RecurringList
               items={expense}
               emptyText="No recurring bills yet."
-              accent={Palette.coral}
+              accent={palette.coral}
             />
           </Card>
 
           <Card>
-            <ThemedText type="subtitle" style={{ color: Palette.berry }}>
+            <ThemedText type="subtitle" style={{ color: palette.berry }}>
               Investments
             </ThemedText>
             <AddForm type="investment" />
             <RecurringList
               items={investment}
               emptyText="No recurring investments yet."
-              accent={Palette.berry}
+              accent={palette.berry}
             />
           </Card>
         </ScrollView>
@@ -214,10 +221,11 @@ export default function PlanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(palette: PaletteType) {
+  return StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Palette.background,
+    backgroundColor: palette.background,
   },
   content: {
     padding: 20,
@@ -234,7 +242,7 @@ const styles = StyleSheet.create({
   },
   estimateLabel: {
     fontSize: 16,
-    color: Palette.inkMuted,
+    color: palette.inkMuted,
   },
   estimateValue: {
     fontFamily: Fonts.monoBold,
@@ -245,12 +253,12 @@ const styles = StyleSheet.create({
   estimatePerMonth: {
     fontFamily: Fonts.body,
     fontSize: 18,
-    color: Palette.inkMuted,
+    color: palette.inkMuted,
   },
   estimateHint: {
     fontSize: 15,
     lineHeight: 22,
-    color: Palette.inkMuted,
+    color: palette.inkMuted,
   },
   form: {
     gap: 8,
@@ -272,7 +280,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   formDayHint: {
-    color: Palette.inkSubtle,
+    color: palette.inkSubtle,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -281,12 +289,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   formError: {
-    color: Palette.coral,
+    color: palette.coral,
     fontSize: 14,
     lineHeight: 20,
   },
   emptyText: {
-    color: Palette.inkSubtle,
+    color: palette.inkSubtle,
     fontSize: 16,
     lineHeight: 22,
   },
@@ -317,13 +325,13 @@ const styles = StyleSheet.create({
   rowPerMonth: {
     fontSize: 14,
     lineHeight: 18,
-    color: Palette.inkSubtle,
+    color: palette.inkSubtle,
   },
   rowAmount: {
     fontFamily: Fonts.monoBold,
     fontSize: 16,
     lineHeight: 22,
-    color: Palette.ink,
+    color: palette.ink,
   },
   remove: {
     width: 32,
@@ -331,14 +339,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Palette.surfaceSunken,
+    backgroundColor: palette.surfaceSunken,
   },
   removePressed: {
-    backgroundColor: Palette.coralSoft,
+    backgroundColor: palette.coralSoft,
   },
   removeText: {
     fontSize: 14,
     lineHeight: 16,
-    color: Palette.inkSubtle,
+    color: palette.inkSubtle,
   },
 });
+}
