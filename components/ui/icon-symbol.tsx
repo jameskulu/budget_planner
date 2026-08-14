@@ -15,9 +15,17 @@ type IconSymbolName = keyof typeof MAPPING;
  */
 const MAPPING = {
   'house.fill': 'home',
+  'bell.fill': 'notifications',
   'paperplane.fill': 'send',
+  'dollarsign.circle.fill': 'attach-money',
+  'questionmark.circle.fill': 'help',
+  'list.bullet.rectangle': 'list-alt',
+  'mic.fill': 'mic',
+  'person.fill': 'person',
+  'pencil': 'edit',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
 } as IconMapping;
 
 /**
