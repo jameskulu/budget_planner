@@ -90,6 +90,9 @@ function createStyles(palette: PaletteType) {
       flex: 1,
     },
     content: {
+      width: '100%',
+      maxWidth: 560,
+      alignSelf: 'center',
       paddingHorizontal: 20,
       paddingBottom: 32,
       gap: 20,
@@ -104,6 +107,9 @@ function createStyles(palette: PaletteType) {
       marginTop: -12,
     },
     footer: {
+      width: '100%',
+      maxWidth: 560,
+      alignSelf: 'center',
       paddingHorizontal: 20,
       paddingTop: 12,
       paddingBottom: 8,

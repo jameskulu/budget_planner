@@ -139,6 +139,9 @@ function createStyles(palette: PaletteType) {
       backgroundColor: palette.background,
     },
     content: {
+      width: '100%',
+      maxWidth: 480,
+      alignSelf: 'center',
       flexGrow: 1,
       padding: 24,
       gap: 20,

@@ -73,6 +73,9 @@ function createStyles(palette: PaletteType) {
       backgroundColor: palette.background,
     },
     content: {
+      width: '100%',
+      maxWidth: 440,
+      alignSelf: 'center',
       flexGrow: 1,
       padding: 24,
       justifyContent: 'center',

@@ -96,6 +96,9 @@ function createStyles(palette: PaletteType) {
       paddingBottom: 40,
     },
     content: {
+      width: '100%',
+      maxWidth: 640,
+      alignSelf: 'center',
       paddingHorizontal: 20,
       paddingBottom: 40,
       gap: 20,

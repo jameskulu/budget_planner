@@ -28,6 +28,46 @@ export const isPurchasesConfigured = Boolean(API_KEY);
 export const canPurchase = Platform.OS !== 'web' && isPurchasesConfigured && !isExpoGo;
 
 const MOCK_PREMIUM_KEY = 'budget-planner:mock-premium:v1';
+const PREMIUM_CACHE_KEY = 'budget-planner:premium-cache:v1';
+
+/** How long a cached premium status stays valid while offline (ms). */
+const PREMIUM_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+type PremiumCache = {
+  active: boolean;
+  cachedAt: number;
+};
+
+async function readPremiumCache(): Promise<PremiumCache | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PREMIUM_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PremiumCache;
+    if (typeof parsed?.active !== 'boolean' || typeof parsed?.cachedAt !== 'number') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function writePremiumCache(active: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      PREMIUM_CACHE_KEY,
+      JSON.stringify({ active, cachedAt: Date.now() } satisfies PremiumCache),
+    );
+  } catch {
+    // Ignore.
+  }
+}
+
+async function clearPremiumCache(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(PREMIUM_CACHE_KEY);
+  } catch {
+    // Ignore.
+  }
+}
 
 /**
  * Dev-only flag that simulates an active subscription so the hard paywall
@@ -77,6 +117,9 @@ export async function resetPurchasesUser(): Promise<void> {
   } catch {
     // Ignore.
   }
+  // The cached premium belonged to the previous account — drop it so the
+  // next user isn't handed access from a stale cache.
+  await clearPremiumCache();
 }
 
 export function hasActiveEntitlement(info: CustomerInfo): boolean {
@@ -97,8 +140,17 @@ export async function isPremium(): Promise<boolean> {
   if (await hasMockPremium()) return true;
   if (!isPurchasesConfigured) return false;
   try {
-    return hasAnyActiveAccess(await Purchases.getCustomerInfo());
+    const active = hasAnyActiveAccess(await Purchases.getCustomerInfo());
+    // Persist the freshest result so offline launches can use it as a fallback.
+    await writePremiumCache(active);
+    return active;
   } catch {
+    // Offline or RevenueCat unavailable: fall back to the last-known status
+    // while it's fresh, so the paywall gate doesn't lock out paid users.
+    const cached = await readPremiumCache();
+    if (cached && Date.now() - cached.cachedAt <= PREMIUM_CACHE_TTL_MS) {
+      return cached.active;
+    }
     return false;
   }
 }
