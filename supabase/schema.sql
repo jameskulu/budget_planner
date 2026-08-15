@@ -78,3 +78,19 @@ create policy "users can manage their own profile"
   for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Permanently deletes the calling user's account and (via on delete cascade)
+-- all of their rows. Runs as the table owner so a client anon key can delete
+-- its own account without holding the service-role secret.
+
+create or replace function public.delete_my_account()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from auth.users where id = auth.uid();
+$$;
+
+revoke execute on function public.delete_my_account() from anon, authenticated;
+grant execute on function public.delete_my_account() to authenticated;

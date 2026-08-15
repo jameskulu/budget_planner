@@ -85,7 +85,7 @@ export default function OverviewScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Notifications"
-              onPress={() => router.push('/notifications')}
+              onPress={() => router.push('/notification-center')}
               style={styles.navButton}>
               <IconSymbol name="bell.fill" size={20} color={palette.ink} />
             </Pressable>

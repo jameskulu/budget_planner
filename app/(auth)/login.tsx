@@ -50,7 +50,7 @@ export default function LoginScreen() {
               <View style={styles.mailIcon}>
                 <IconSymbol name="envelope.fill" size={18} color={palette.skyDeep} />
               </View>
-              <ThemedText style={styles.socialLabel}>Continue with email</ThemedText>
+              <ThemedText style={styles.socialLabel}>Continue with Email</ThemedText>
             </Pressable>
           </View>
 

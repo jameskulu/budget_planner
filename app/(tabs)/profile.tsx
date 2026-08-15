@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as StoreReview from 'expo-store-review';
@@ -39,7 +39,7 @@ import { useAppTheme } from '@/lib/theme';
 export default function ProfileScreen() {
   const { palette, mode, setMode } = useAppTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
-  const { user, signOut, updateName } = useAuth();
+  const { user, signOut, deleteAccount, updateName } = useAuth();
   const {
     transactions,
     snapshot,
@@ -73,6 +73,8 @@ export default function ProfileScreen() {
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [plans, setPlans] = useState<AvailablePlans>({ monthly: null, annual: null });
   const [switchingPlan, setSwitchingPlan] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -145,12 +147,16 @@ export default function ProfileScreen() {
   };
 
   const handleRateApp = async () => {
-    const available = await StoreReview.isAvailableAsync();
-    if (!available) {
-      showToast('Store review is not available on this device.', 'info');
+    if (await StoreReview.hasAction()) {
+      await StoreReview.requestReview();
       return;
     }
-    await StoreReview.requestReview();
+    const url = StoreReview.storeUrl();
+    if (url) {
+      await Linking.openURL(url);
+      return;
+    }
+    showToast('Store review is not available on this device.', 'info');
   };
 
   const handleReferFriend = async () => {
@@ -185,6 +191,21 @@ export default function ProfileScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    setDeleteText('');
+    setDeleteOpen(true);
+  };
+
+  const confirmDeleteAccount = () => {
+    setDeleteOpen(false);
+    setDeleteText('');
+    void deleteAccount()
+      .then(() => signOut())
+      .catch(() => {
+        Alert.alert('Could not delete account', 'Please try again later.');
+      });
   };
 
   const handleRestore = async () => {
@@ -638,13 +659,77 @@ export default function ProfileScreen() {
 
           <Pressable
             accessibilityRole="button"
-            onPress={handleSignOut}
+            onPress={handleDeleteAccount}
             style={({ pressed }) => [styles.settingsRow, pressed && styles.aboutPressed]}>
-            <IconSymbol name="person.fill" size={20} color={palette.inkSubtle} />
-            <ThemedText style={[styles.aboutText, styles.signOutText]}>Sign out</ThemedText>
+            <IconSymbol name="trash.fill" size={20} color={palette.coral} />
+            <ThemedText style={[styles.aboutText, styles.signOutText]}>Delete account</ThemedText>
             <IconSymbol name="chevron.right" size={20} color={palette.inkFaint} />
           </Pressable>
         </Card>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleSignOut}
+          style={({ pressed }) => [styles.signOutButton, pressed && styles.aboutPressed]}>
+          <IconSymbol name="person.fill" size={20} color="#FFFFFF" />
+          <ThemedText style={styles.signOutButtonText}>Sign out</ThemedText>
+        </Pressable>
+
+        <Modal
+          visible={deleteOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setDeleteOpen(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <ThemedText type="subtitle">Delete your account?</ThemedText>
+              <ThemedText style={styles.modalBody}>
+                This permanently deletes your account and all your data. This cannot be undone.
+              </ThemedText>
+              <ThemedText style={styles.modalBody}>
+                Type{' '}
+                <ThemedText style={styles.modalCode}>DELETE</ThemedText>{' '}
+                below to confirm.
+              </ThemedText>
+              <TextField
+                value={deleteText}
+                onChangeText={setDeleteText}
+                placeholder="DELETE"
+                placeholderTextColor={palette.inkFaint}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (deleteText.trim().toUpperCase() === 'DELETE') confirmDeleteAccount();
+                }}
+              />
+              <View style={styles.modalActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setDeleteOpen(false)}
+                  style={({ pressed }) => [
+                    styles.modalButton,
+                    styles.modalCancel,
+                    pressed && styles.aboutPressed,
+                  ]}>
+                  <ThemedText style={styles.modalCancelText}>Cancel</ThemedText>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={deleteText.trim().toUpperCase() !== 'DELETE'}
+                  onPress={confirmDeleteAccount}
+                  style={({ pressed }) => [
+                    styles.modalButton,
+                    styles.modalDelete,
+                    deleteText.trim().toUpperCase() !== 'DELETE' && styles.modalDeleteDisabled,
+                    pressed && styles.aboutPressed,
+                  ]}>
+                  <ThemedText style={styles.modalDeleteText}>DELETE</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1026,6 +1111,20 @@ function createStyles(palette: PaletteType) {
     signOutText: {
       color: palette.coral,
     },
+    signOutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 12,
+      backgroundColor: palette.coral,
+    },
+    signOutButtonText: {
+      fontSize: 16,
+      fontFamily: Fonts.bodyBold,
+      color: '#FFFFFF',
+    },
     aboutPressed: {
       opacity: 0.6,
     },
@@ -1033,6 +1132,63 @@ function createStyles(palette: PaletteType) {
       flex: 1,
       fontSize: 16,
       color: palette.inkMuted,
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    modalCard: {
+      width: '100%',
+      maxWidth: 420,
+      backgroundColor: palette.surface,
+      borderRadius: 20,
+      padding: 20,
+      gap: 12,
+      borderWidth: 1,
+      borderColor: palette.outline,
+    },
+    modalBody: {
+      fontSize: 15,
+      lineHeight: 21,
+      color: palette.inkMuted,
+    },
+    modalCode: {
+      fontFamily: Fonts.monoBold,
+      color: palette.coral,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 4,
+    },
+    modalButton: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    modalCancel: {
+      backgroundColor: palette.surfaceSunken,
+    },
+    modalCancelText: {
+      fontSize: 16,
+      fontFamily: Fonts.bodyBold,
+      color: palette.ink,
+    },
+    modalDelete: {
+      backgroundColor: palette.coral,
+    },
+    modalDeleteDisabled: {
+      opacity: 0.4,
+    },
+    modalDeleteText: {
+      fontSize: 16,
+      fontFamily: Fonts.bodyBold,
+      color: '#FFFFFF',
     },
   });
 }

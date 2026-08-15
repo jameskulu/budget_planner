@@ -25,6 +25,8 @@ type AuthContextValue = {
   signUpWithEmail: (name: string, email: string, password: string) => Promise<boolean>;
   signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Permanently deletes the current account via the delete_my_account RPC. */
+  deleteAccount: () => Promise<void>;
   /** Updates the user's display name (persisted to their profile). */
   updateName: (name: string) => Promise<void>;
 };
@@ -175,6 +177,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    setError(null);
+    try {
+      const { error } = await supabase.rpc('delete_my_account');
+      if (error) throw error;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete your account.');
+      throw e;
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       loading,
@@ -188,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUpWithEmail,
       signInAsGuest,
       signOut,
+      deleteAccount,
       updateName,
     }),
     [
@@ -200,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUpWithEmail,
       signInAsGuest,
       signOut,
+      deleteAccount,
       updateName,
     ],
   );

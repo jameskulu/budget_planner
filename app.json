@@ -9,7 +9,8 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "appStoreUrl": "https://apps.apple.com/app/budget-planner-pico/id0000000000"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,6 +19,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.budgetplanner.pico",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },

@@ -26,6 +26,7 @@ const MAPPING = {
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   'chevron.left': 'chevron-left',
+  'trash.fill': 'delete',
 } as IconMapping;
 
 /**

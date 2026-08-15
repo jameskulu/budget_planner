@@ -58,6 +58,7 @@ function RootNavigator() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="plan" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="notification-center" />
         <Stack.Screen name="insights" />
         <Stack.Screen name="(auth)/login" />
         <Stack.Screen name="(auth)/email" />
