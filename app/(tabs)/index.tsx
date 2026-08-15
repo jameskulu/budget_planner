@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -37,6 +37,8 @@ export default function OverviewScreen() {
 
   const [note, setNote] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
   const [dictState, setDictState] = useState<{ listening: boolean; message: string | null }>({
     listening: false,
     message: null,
@@ -52,7 +54,9 @@ export default function OverviewScreen() {
   const progressPercent = `${Math.min(100, Math.max(10, Math.round((1 - spentRatio) * 100)))}%` as const;
 
   const handleAddNote = () => {
-    if (!note.trim()) return;
+    if (submitLock.current || !note.trim()) return;
+    submitLock.current = true;
+    setSubmitting(true);
     const result = addNote(note);
     if (result.ok) {
       setNote('');
@@ -61,6 +65,11 @@ export default function OverviewScreen() {
     } else {
       setFeedback(result.error);
     }
+    // Keep the guard held long enough to swallow a double-tap, then release.
+    setTimeout(() => {
+      setSubmitting(false);
+      submitLock.current = false;
+    }, 400);
   };
 
   return (
@@ -264,7 +273,7 @@ export default function OverviewScreen() {
             {feedback ? (
               <ThemedText style={{ color: palette.sky, fontSize: 16 }}>{feedback}</ThemedText>
             ) : null}
-            <PrimaryButton title="Add" onPress={handleAddNote} />
+            <PrimaryButton title="Add" onPress={handleAddNote} loading={submitting} />
           </Card>
 
           {/* Recent Activity */}

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,6 +7,7 @@ import { Card } from '@/components/card';
 import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
+import { useToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TextField } from '@/components/ui/text-field';
 import { Fonts, type PaletteType } from '@/constants/theme';
@@ -17,20 +18,27 @@ import type { RecurringItem } from '@/lib/recurring';
 function AddForm({ type }: { type: RecurringItem['type'] }) {
   const { palette } = useAppTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
-  const { addRecurring } = useBudget();
+  const { addRecurring, currency } = useBudget();
+  const { showToast } = useToast();
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [day, setDay] = useState('1');
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
 
   const submit = () => {
+    if (submitLock.current) return;
     const cleaned = amount.replace(/,/g, '').trim();
     const value = parseFloat(cleaned);
     const dayValue = Math.round(parseFloat(day));
     if (!label.trim() || !Number.isFinite(value) || value <= 0) {
       setError('Enter a label and a positive amount.');
+      showToast('Enter a label and a positive amount.', 'error');
       return;
     }
+    submitLock.current = true;
+    setSubmitting(true);
     addRecurring({
       type,
       label: label.trim(),
@@ -41,6 +49,11 @@ function AddForm({ type }: { type: RecurringItem['type'] }) {
     setAmount('');
     setDay('1');
     setError(null);
+    showToast('Added to your monthly plan.', 'ok');
+    setTimeout(() => {
+      setSubmitting(false);
+      submitLock.current = false;
+    }, 400);
   };
 
   return (
@@ -59,14 +72,17 @@ function AddForm({ type }: { type: RecurringItem['type'] }) {
         style={styles.formLabel}
       />
       <View style={styles.formRow}>
-        <TextField
-          value={amount}
-          onChangeText={setAmount}
-          placeholder="Amount"
-          placeholderTextColor={palette.inkFaint}
-          keyboardType="numeric"
-          style={styles.formAmount}
-        />
+        <View style={styles.amountWrap}>
+          <ThemedText style={styles.amountCurrency}>{currency.symbol}</ThemedText>
+          <TextField
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="Amount"
+            placeholderTextColor={palette.inkFaint}
+            keyboardType="numeric"
+            style={styles.formAmount}
+          />
+        </View>
         <TextField
           value={day}
           onChangeText={setDay}
@@ -75,7 +91,7 @@ function AddForm({ type }: { type: RecurringItem['type'] }) {
           keyboardType="number-pad"
           style={styles.formDay}
         />
-        <PrimaryButton title="Add" onPress={submit} style={styles.formButton} />
+        <PrimaryButton title="Add" onPress={submit} loading={submitting} style={styles.formButton} />
       </View>
       <ThemedText style={styles.formDayHint}>Day of the month it lands on (e.g. rent on the 1st).</ThemedText>
       {error ? <ThemedText style={styles.formError}>{error}</ThemedText> : null}
@@ -270,6 +286,17 @@ function createStyles(palette: PaletteType) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  amountWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  amountCurrency: {
+    fontFamily: Fonts.monoBold,
+    fontSize: 16,
+    color: palette.inkMuted,
   },
   formAmount: {
     flex: 1,

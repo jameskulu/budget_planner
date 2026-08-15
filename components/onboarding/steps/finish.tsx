@@ -17,6 +17,8 @@ import {
   setMockPremium,
   type AvailablePlans,
 } from '@/lib/purchases';
+import { requestNotificationPermission, syncNotifications, type NotificationPrefs } from '@/lib/notifications';
+import type { RecurringItem } from '@/lib/recurring';
 import type { StepProps } from '@/components/onboarding/steps/welcome';
 
 type FinishStepProps = StepProps & {
@@ -30,6 +32,9 @@ type FinishStepProps = StepProps & {
   onGoogle: () => Promise<void>;
   onGuest: () => void;
   goDashboard: () => void;
+  notificationPrefs: NotificationPrefs;
+  setNotificationPrefs: (prefs: NotificationPrefs) => void;
+  recurring: RecurringItem[];
 };
 
 const BENEFITS = [
@@ -232,6 +237,71 @@ export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: F
           </ThemedText>
         </>
       )}
+    </OnboardingLayout>
+  );
+}
+
+export function NotifyStep({
+  next,
+  notificationPrefs,
+  setNotificationPrefs,
+  recurring,
+}: FinishStepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+  const [enabled, setEnabled] = useState(false);
+  const [denied, setDenied] = useState(false);
+
+  const enableReminders = async () => {
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      setDenied(true);
+      return;
+    }
+    const nextPrefs: NotificationPrefs = { ...notificationPrefs, dailyReminder: true };
+    setNotificationPrefs(nextPrefs);
+    await syncNotifications(nextPrefs, recurring);
+    setEnabled(true);
+  };
+
+  const skip = () => {
+    const nextPrefs: NotificationPrefs = { ...notificationPrefs, dailyReminder: false };
+    setNotificationPrefs(nextPrefs);
+    next();
+  };
+
+  return (
+    <OnboardingLayout
+      title="Daily money reminders"
+      subtitle="Let Pico nudge you each morning with your safe-to-spend."
+      footer={
+        <View style={styles.footerStack}>
+          {enabled ? (
+            <PrimaryButton title="Continue" onPress={next} />
+          ) : (
+            <>
+              <PrimaryButton title="Yes, remind me daily" onPress={() => void enableReminders()} />
+              <Pressable accessibilityRole="button" onPress={skip}>
+                <ThemedText style={styles.skip}>Not right now</ThemedText>
+              </Pressable>
+            </>
+          )}
+        </View>
+      }>
+      <View style={styles.notifyWrap}>
+        <Pico
+          size={96}
+          pose="showing_phone"
+          speech="I'll tell you what you can safely spend every morning! 📲"
+          speechPosition="bottom"
+          interactive
+        />
+        {denied ? (
+          <ThemedText style={styles.notifyDenied}>
+            Notifications are off for this app. You can enable them anytime in Settings.
+          </ThemedText>
+        ) : null}
+      </View>
     </OnboardingLayout>
   );
 }
@@ -468,6 +538,18 @@ function createStyles(palette: PaletteType) {
       alignItems: 'center',
       gap: 12,
       paddingTop: 24,
+    },
+    notifyWrap: {
+      alignItems: 'center',
+      gap: 12,
+      paddingTop: 24,
+    },
+    notifyDenied: {
+      color: palette.coral,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: 'center',
+      maxWidth: 320,
     },
     accountSigned: {
       color: palette.leafDeep,

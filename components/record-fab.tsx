@@ -42,6 +42,10 @@ export function RecordFab() {
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState<{ message: string; tone: 'ok' | 'error' | 'info' } | null>(null);
   const pulse = useRef(new Animated.Value(0)).current;
+  const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopSilenceTimer = useRef<() => void>(() => {});
+
+  const SILENCE_TIMEOUT_MS = 4000;
 
   const showStatus = useCallback(
     (message: string, tone: 'ok' | 'error' | 'info') => {
@@ -107,29 +111,59 @@ export function RecordFab() {
       const module = await loadModule();
       if (disposed || !module) return;
 
+      const clearSilence = () => {
+        if (silenceTimer.current) {
+          clearTimeout(silenceTimer.current);
+          silenceTimer.current = null;
+        }
+      };
+
+      const armSilence = () => {
+        clearSilence();
+        silenceTimer.current = setTimeout(() => {
+          silenceTimer.current = null;
+          if (module) {
+            try {
+              module.stop();
+            } catch {}
+          }
+        }, SILENCE_TIMEOUT_MS);
+      };
+
+      stopSilenceTimer.current = clearSilence;
+
       const onResult = (ev: { isFinal?: boolean; results?: { transcript?: string }[] }) => {
         if (!ev.isFinal) return;
         const transcript = ev.results?.[0]?.transcript ?? '';
         setListening(false);
+        clearSilence();
         if (transcript.trim()) handleTranscript(transcript);
       };
       const onError = (ev: { error?: string }) => {
         setListening(false);
+        clearSilence();
         let message = 'Dictation stopped.';
         if (ev.error === 'not-allowed') message = 'Microphone permission is off.';
         else if (ev.error === 'no-speech') message = "I didn't hear anything — try again.";
         else if (ev.error === 'network') message = 'Dictation needs the network (or localhost).';
         showStatus(message, 'error');
       };
-      const onEnd = () => setListening(false);
+      const onEnd = () => {
+        setListening(false);
+        clearSilence();
+      };
 
       subs.push(module.addListener('result', onResult));
       subs.push(module.addListener('error', onError));
       subs.push(module.addListener('end', onEnd));
+
+      // Auto-stop when the user goes quiet for SILENCE_TIMEOUT_MS.
+      module.addListener('result', () => armSilence());
     })();
 
     return () => {
       disposed = true;
+      stopSilenceTimer.current();
       subs.forEach((s) => s.remove());
     };
   }, [handleTranscript, showStatus]);
@@ -150,6 +184,7 @@ export function RecordFab() {
     }
     haptic('medium', hapticsEnabled);
     setStatus(null);
+    stopSilenceTimer.current();
     setListening(true);
     showStatus('Listening… say it!', 'info');
     try {

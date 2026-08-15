@@ -4,7 +4,7 @@ import { ActivityIndicator, Animated, Easing, View } from 'react-native';
 
 import { AhaStep, AffordStep, AdjustStep, CalculatingStep, SummaryStep, TrackStep } from '@/components/onboarding/steps/demo';
 import { BillsStep, IncomeStep, PaydayStep, SavingsStep } from '@/components/onboarding/steps/finance';
-import { AccountStep, DoneStep, PaywallStep } from '@/components/onboarding/steps/finish';
+import { AccountStep, DoneStep, NotifyStep, PaywallStep } from '@/components/onboarding/steps/finish';
 import { GoalStep, PayFrequencyStep, ProblemStep, WelcomeStep } from '@/components/onboarding/steps/welcome';
 import { useAuth } from '@/lib/auth';
 import { ONBOARDING_STEP_COUNT, type OnboardingPlan, type PlanPeriod } from '@/lib/onboarding';
@@ -22,6 +22,9 @@ export default function OnboardingScreen() {
     money,
     currency,
     addTransaction,
+    notificationPrefs,
+    setNotificationPrefs,
+    recurring,
   } = useBudget();
   const [signingIn, setSigningIn] = useState(false);
   const [plan, setPlan] = useState<OnboardingPlan>(onboarding.plan);
@@ -94,6 +97,9 @@ export default function OnboardingScreen() {
       onGuest: handleGuest,
       goDashboard,
       addTransaction,
+      notificationPrefs,
+      setNotificationPrefs,
+      recurring,
     }),
     [
       onboarding,
@@ -112,6 +118,9 @@ export default function OnboardingScreen() {
       handleGuest,
       goDashboard,
       addTransaction,
+      notificationPrefs,
+      setNotificationPrefs,
+      recurring,
     ],
   );
 
@@ -174,6 +183,8 @@ export default function OnboardingScreen() {
       case 14:
         return <PaywallStep {...stepProps} />;
       case 15:
+        return <NotifyStep {...stepProps} />;
+      case 16:
         return <AccountStep {...stepProps} />;
       default:
         return <DoneStep {...stepProps} />;

@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { AppState } from 'react-native';
 
 import { useAuth } from '@/lib/auth';
 import { computeBudget, type BudgetSnapshot } from '@/lib/budget';
@@ -35,6 +36,7 @@ import type { ParsedTransaction, Transaction } from '@/lib/types';
 const CACHE_PREFIX = 'budget-planner:v1:';
 const RECURRING_PREFIX = 'budget-planner:recurring:v1:';
 const LAST_GEN_PREFIX = 'budget-planner:lastgen:v1:';
+const OUTBOX_PREFIX = 'budget-planner:outbox:v1:';
 const CURRENCY_KEY = 'budget-planner:currency:v1';
 const NOTIFS_KEY = 'budget-planner:notifications:v1';
 const ONBOARDING_KEY = 'budget-planner:onboarding:v1';
@@ -90,9 +92,24 @@ function transactionFromRecurring(item: RecurringItem, monthKey: string): Parsed
   };
 }
 
-function createId(prefix: string): string {
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${prefix}-${Date.now().toString(36)}-${rand}`;
+/** Generates a v4-style UUID so offline rows can be inserted with a stable id. */
+function createUuid(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/** Pending server write that failed while offline, retried once back online. */
+type OutboxOp =
+  | { kind: 'insert-tx'; rows: TxRow[] }
+  | { kind: 'delete-tx'; ids: string[] }
+  | { kind: 'insert-rec'; rows: RecurringRow[] }
+  | { kind: 'delete-rec'; ids: string[] };
+
+function outboxKeyFor(userId: string): string {
+  return `${OUTBOX_PREFIX}${userId}`;
 }
 
 type TxRow = {
@@ -104,7 +121,7 @@ type TxRow = {
   category: string;
   note: string;
   is_investment: boolean;
-  created_at: string;
+  created_at?: string;
 };
 
 function toTransaction(row: TxRow): Transaction {
@@ -138,7 +155,7 @@ type RecurringRow = {
   amount: number;
   label: string;
   day: number;
-  created_at: string;
+  created_at?: string;
 };
 
 function toRecurring(row: RecurringRow): RecurringItem {
@@ -205,6 +222,8 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   const [hapticsEnabled, setHapticsEnabledState] = useState(true);
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
   const loadedRef = useRef(false);
+  const outboxRef = useRef<OutboxOp[]>([]);
+  const [outboxTick, setOutboxTick] = useState(0);
 
   useEffect(() => {
     const userId = user?.id;
@@ -223,7 +242,18 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
             .select('*')
             .order('created_at', { ascending: false });
           if (error) throw error;
-          if (!cancelled) setTransactions((data as TxRow[]).map(toTransaction));
+          const server = (data as TxRow[]).map(toTransaction);
+          if (!cancelled) {
+            // Merge rows that were added offline (pending in the outbox) so a
+            // successful fetch doesn't wipe them out.
+            const raw = await AsyncStorage.getItem(cacheKey);
+            const cached = raw ? (JSON.parse(raw) as Transaction[]) : [];
+            const serverIds = new Set(server.map((t) => t.id));
+            const extras = Array.isArray(cached)
+              ? cached.filter((t) => t.id && !serverIds.has(t.id))
+              : [];
+            setTransactions([...extras, ...server]);
+          }
         } else {
           throw new Error('supabase not configured');
         }
@@ -440,6 +470,94 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
     ).catch(() => {});
   }, [recurring, user]);
 
+  // Load the pending-write outbox for this user from disk.
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const raw = await AsyncStorage.getItem(outboxKeyFor(userId));
+      if (raw && !cancelled) {
+        try {
+          const ops = JSON.parse(raw) as OutboxOp[];
+          if (Array.isArray(ops)) {
+            outboxRef.current = ops;
+            setOutboxTick((t) => t + 1);
+          }
+        } catch {
+          // ignore corrupt outbox payload
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const enqueueOps = useCallback((ops: OutboxOp[]) => {
+    outboxRef.current = [...outboxRef.current, ...ops];
+    setOutboxTick((t) => t + 1);
+  }, []);
+
+  // Persist the outbox whenever it changes.
+  useEffect(() => {
+    if (!user) return;
+    AsyncStorage.setItem(
+      outboxKeyFor(user.id),
+      JSON.stringify(outboxRef.current),
+    ).catch(() => {});
+  }, [outboxTick, user]);
+
+  // Retry pending writes once we have a connection. Runs on app start,
+  // when the app returns to the foreground, and on a slow heartbeat.
+  const flushOutbox = useCallback(async () => {
+    if (!user || !isSupabaseConfigured) return;
+    const pending = outboxRef.current;
+    if (pending.length === 0) return;
+
+    const remaining: OutboxOp[] = [];
+    for (const op of pending) {
+      try {
+        if (op.kind === 'insert-tx') {
+          const { error } = await supabase
+            .from('transactions')
+            .upsert(op.rows, { onConflict: 'id' });
+          if (error) remaining.push(op);
+        } else if (op.kind === 'delete-tx') {
+          const { error } = await supabase.from('transactions').delete().in('id', op.ids);
+          if (error) remaining.push(op);
+        } else if (op.kind === 'insert-rec') {
+          const { error } = await supabase
+            .from('recurring')
+            .upsert(op.rows, { onConflict: 'id' });
+          if (error) remaining.push(op);
+        } else if (op.kind === 'delete-rec') {
+          const { error } = await supabase.from('recurring').delete().in('id', op.ids);
+          if (error) remaining.push(op);
+        }
+      } catch {
+        remaining.push(op);
+      }
+    }
+    outboxRef.current = remaining;
+    setOutboxTick((t) => t + 1);
+  }, [user]);
+
+  useEffect(() => {
+    void flushOutbox();
+  }, [loaded, user?.id, flushOutbox]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void flushOutbox();
+    });
+    const timer = setInterval(() => void flushOutbox(), 20_000);
+    return () => {
+      sub.remove();
+      clearInterval(timer);
+    };
+  }, [flushOutbox]);
+
   const currency = getCurrency(currencyCode);
   const setCurrency = useCallback((code: string) => {
     setCurrencyCode(getCurrency(code).code);
@@ -467,82 +585,92 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
       const result = parseNote(note);
       if (!result.ok || !user) return result;
 
-      const rows = result.parsed.map((p) => toRow(user.id, p));
+      const rows = result.parsed.map((p) => ({ id: createUuid(), ...toRow(user.id, p) }));
+      const locals = rows.map((r) => toTransaction(r));
+      // Optimistic: show the transactions immediately, even offline.
+      setTransactions((prev) => [...locals, ...prev]);
 
-      if (isSupabaseConfigured) {
-        supabase
-          .from('transactions')
-          .insert(rows)
-          .select()
-          .then(({ data, error }) => {
-            if (error) {
-              const locals = rows.map((r) => ({ id: createId('tx'), ...r }));
-              setTransactions((prev) => [...locals, ...prev]);
-              return;
-            }
-            const txs = (data as TxRow[]).map(toTransaction);
-            setTransactions((prev) => [...txs, ...prev]);
-          });
-      } else {
-        const locals = rows.map((r) => ({ id: createId('tx'), ...r }));
-        setTransactions((prev) => [...locals, ...prev]);
-      }
+      if (!isSupabaseConfigured) return result;
+
+      supabase
+        .from('transactions')
+        .upsert(rows, { onConflict: 'id' })
+        .select()
+        .then(({ data, error }) => {
+          if (error) {
+            enqueueOps([{ kind: 'insert-tx', rows }]);
+            return;
+          }
+          const txs = (data as TxRow[]).map(toTransaction);
+          setTransactions((prev) =>
+            prev.map((t) => txs.find((s) => s.id === t.id) ?? t),
+          );
+        });
       return result;
     },
-    [user],
+    [user, enqueueOps],
   );
 
   const addTransaction = useCallback(
     (parsed: ParsedTransaction): string => {
       if (!user) return '';
-      const row = toRow(user.id, parsed);
-      const local: Transaction = { id: createId('tx'), ...parsed };
+      const id = createUuid();
+      const row: TxRow = { id, ...toRow(user.id, parsed) };
+      const local: Transaction = { id, ...parsed };
+      // Optimistic: show the transaction immediately, even offline.
+      setTransactions((prev) => [local, ...prev]);
 
-      if (isSupabaseConfigured) {
-        supabase
-          .from('transactions')
-          .insert(row)
-          .select()
-          .then(({ data, error }) => {
-            if (error) {
-              setTransactions((prev) => [local, ...prev]);
-              return;
-            }
-            const txs = (data as TxRow[]).map(toTransaction);
-            setTransactions((prev) => [...txs, ...prev]);
-          });
-      } else {
-        setTransactions((prev) => [local, ...prev]);
-      }
-      return local.id;
+      if (!isSupabaseConfigured) return id;
+
+      supabase
+        .from('transactions')
+        .upsert(row, { onConflict: 'id' })
+        .select()
+        .then(({ data, error }) => {
+          if (error) {
+            enqueueOps([{ kind: 'insert-tx', rows: [row] }]);
+            return;
+          }
+          const txs = (data as TxRow[]).map(toTransaction);
+          if (txs[0]) {
+            setTransactions((prev) => prev.map((t) => (t.id === id ? txs[0] : t)));
+          }
+        });
+      return id;
     },
-    [user],
+    [user, enqueueOps],
   );
 
   const deleteTransaction = useCallback((id: string) => {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
     if (isSupabaseConfigured) {
-      supabase.from('transactions').delete().eq('id', id).then(({ error }) => {
-        if (error) console.warn('delete failed:', error.message);
-      });
+      supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) enqueueOps([{ kind: 'delete-tx', ids: [id] }]);
+        });
     }
-  }, []);
+  }, [enqueueOps]);
 
   const addRecurring = useCallback(
     (item: Omit<RecurringItem, 'id'>) => {
-      const full: RecurringItem = { ...item, id: createId('rec') };
+      const id = createUuid();
+      const full: RecurringItem = { ...item, id };
       setRecurring((prev) => [...prev, full]);
       addTransaction(transactionFromRecurring(full, currentMonthKey()));
       if (user) {
         AsyncStorage.setItem(lastGenKeyFor(user.id), currentMonthKey()).catch(() => {});
         if (isSupabaseConfigured) {
+          const row: RecurringRow = { id, ...toRecurringRow(user.id, item) };
           supabase
             .from('recurring')
-            .insert(toRecurringRow(user.id, item))
+            .upsert(row, { onConflict: 'id' })
             .select()
             .then(({ data, error }) => {
               if (error) {
-                console.warn('recurring insert failed:', error.message);
+                enqueueOps([{ kind: 'insert-rec', rows: [row] }]);
                 return;
               }
               const rows = (data as RecurringRow[]).map(toRecurring);
@@ -553,7 +681,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [addTransaction, user],
+    [addTransaction, user, enqueueOps],
   );
 
   // One-time import: when onboarding completes, promote the income and bills
@@ -617,7 +745,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
           .delete()
           .eq('id', id)
           .then(({ error }) => {
-            if (error) console.warn('recurring delete failed:', error.message);
+            if (error) enqueueOps([{ kind: 'delete-rec', ids: [id] }]);
           });
         supabase
           .from('transactions')
@@ -633,7 +761,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
           });
       }
     },
-    [recurring, user],
+    [recurring, user, enqueueOps],
   );
 
   /**

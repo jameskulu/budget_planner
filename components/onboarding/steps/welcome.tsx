@@ -1,12 +1,20 @@
-import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import {
+  Animated,
+  Dimensions,
+  Easing,
+  Image,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout';
 import { SelectionCard } from '@/components/onboarding/selection-card';
-import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
-import { type PaletteType } from '@/constants/theme';
+import { Fonts, type PaletteType } from '@/constants/theme';
 import {
   GOALS,
   PAY_FREQUENCIES,
@@ -14,6 +22,8 @@ import {
   type OnboardingState,
 } from '@/lib/onboarding';
 import { useAppTheme } from '@/lib/theme';
+
+const { width: SW, height: SH } = Dimensions.get('window');
 
 export type StepProps = {
   value: OnboardingState;
@@ -24,77 +34,251 @@ export type StepProps = {
   money: (amount: number) => string;
 };
 
-export function WelcomeStep({ next }: StepProps) {
-  const { palette } = useAppTheme();
-  const styles = useMemo(() => createStyles(palette), [palette]);
+// Feature pill tags shown floating around the mascot
+const PILLS = [
+  { label: '💸 Budget', top: 0.14, left: 0.04, rotate: '-8deg' },
+  { label: '📊 Track', top: 0.10, left: 0.58, rotate: '7deg' },
+  { label: '🎯 Goals', top: 0.26, left: 0.68, rotate: '-5deg' },
+  { label: '🔔 Bills', top: 0.30, left: -0.02, rotate: '6deg' },
+  { label: '💰 Save', top: 0.46, left: 0.60, rotate: '8deg' },
+];
+
+function FloatingPill({
+  label,
+  top,
+  left,
+  rotate,
+  delay,
+}: {
+  label: string;
+  top: number;
+  left: number;
+  rotate: string;
+  delay: number;
+}) {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(translateY, {
+          toValue: -8,
+          duration: 1800,
+          delay,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [translateY, delay]);
 
   return (
-    <OnboardingLayout
-      footer={
-        <View style={styles.footerStack}>
-          <PrimaryButton title="Get started" onPress={next} />
-          <ThemedText style={styles.minutes}>Takes less than 2 minutes.</ThemedText>
-        </View>
-      }>
-      <View style={styles.heroStage}>
-        <View style={styles.heroGlow} />
-        <View style={styles.heroBadge}>
-          <ThemedText style={styles.heroBadgeText}>👋 Say hello</ThemedText>
-        </View>
-        <View style={styles.heroMascot}>
-          <Pico
-            size={230}
-            pose="onboarding"
-            speech="Hi! I'm Pico, your money buddy!"
-            speechPosition="bottom"
-            interactive
-          />
-        </View>
+    <Animated.View
+      style={[
+        pillStyles.pill,
+        {
+          top: SH * top,
+          left: SW * left,
+          transform: [{ translateY }, { rotate }],
+        },
+      ]}>
+      <ThemedText style={pillStyles.pillText}>{label}</ThemedText>
+    </Animated.View>
+  );
+}
+
+const pillStyles = StyleSheet.create({
+  pill: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  pillText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1E0A40',
+  },
+});
+
+export function WelcomeStep({ next }: StepProps) {
+  const { palette, isDark } = useAppTheme();
+
+  // Entry animation
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeIn, {
+        toValue: 1,
+        duration: 700,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideUp, {
+        toValue: 0,
+        duration: 700,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeIn, slideUp]);
+
+  // Background: dark rich purple gradient using Pico's purple
+  const bgTop = isDark ? '#1A0533' : '#3B0F80';
+  const bgBottom = isDark ? '#0D0220' : '#6D28D9';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: bgTop }}>
+      {/* Soft radial glow behind mascot */}
+      <View
+        style={{
+          position: 'absolute',
+          top: SH * 0.10,
+          alignSelf: 'center',
+          width: SW * 0.9,
+          height: SW * 0.9,
+          borderRadius: SW * 0.45,
+          backgroundColor: '#A855F7',
+          opacity: 0.22,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          top: SH * 0.18,
+          alignSelf: 'center',
+          width: SW * 0.65,
+          height: SW * 0.65,
+          borderRadius: SW * 0.325,
+          backgroundColor: '#C084FC',
+          opacity: 0.18,
+        }}
+      />
+
+      {/* Floating pill tags */}
+      {PILLS.map((p, i) => (
+        <FloatingPill key={p.label} {...p} delay={i * 280} />
+      ))}
+
+      {/* Mascot hero */}
+      <View
+        style={{
+          position: 'absolute',
+          top: SH * 0.07,
+          alignSelf: 'center',
+          alignItems: 'center',
+        }}>
+        <Image
+          source={require('../../../assets/images/pico/onbording.png')}
+          style={{ width: SW * 0.82, height: SW * 0.82 }}
+          resizeMode="contain"
+        />
       </View>
 
-      <View style={styles.heroText}>
-        <ThemedText type="title" style={styles.heroTitle}>
-          Meet Pico
-        </ThemedText>
-        <ThemedText style={styles.heroSub}>Your money buddy. 💜</ThemedText>
-      </View>
+      {/* Bottom content card */}
+      <SafeAreaView
+        edges={['bottom']}
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+        }}>
+        <Animated.View
+          style={{
+            opacity: fadeIn,
+            transform: [{ translateY: slideUp }],
+            backgroundColor: 'rgba(255,255,255,0.10)',
+            marginHorizontal: 16,
+            marginBottom: 16,
+            borderRadius: 32,
+            paddingHorizontal: 24,
+            paddingTop: 28,
+            paddingBottom: 24,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.18)',
+            // glassmorphism shadow
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.25,
+            shadowRadius: 24,
+            elevation: 12,
+            gap: 6,
+          }}>
+          {/* App name */}
+          <ThemedText
+            style={{
+              fontFamily: Fonts.display,
+              fontSize: 42,
+              lineHeight: 48,
+              color: '#FFFFFF',
+              textAlign: 'center',
+              letterSpacing: -1,
+            }}>
+            Pico
+          </ThemedText>
 
-      <View style={styles.features}>
-        <View style={styles.feature}>
-          <View style={[styles.featureIcon, styles.featureIconLeaf]}>
-            <ThemedText style={styles.featureEmoji}>💸</ThemedText>
-          </View>
-          <View style={styles.featureText}>
-            <ThemedText style={styles.featureTitle}>Know what you can spend</ThemedText>
-            <ThemedText style={styles.featureBody}>
-              No guesswork, no budgeting spreadsheets.
+          {/* Tagline */}
+          <ThemedText
+            style={{
+              fontFamily: Fonts.body,
+              fontSize: 16,
+              lineHeight: 22,
+              color: 'rgba(255,255,255,0.72)',
+              textAlign: 'center',
+              marginBottom: 20,
+            }}>
+            Track, budget {'&'} save — effortlessly.
+          </ThemedText>
+
+          {/* Get Started button — dark pill style */}
+          <Pressable
+            onPress={next}
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? '#1A0533' : '#0F0020',
+              borderRadius: 999,
+              paddingVertical: 18,
+              alignItems: 'center',
+              transform: pressed ? [{ scale: 0.97 }] : [],
+            })}>
+            <ThemedText
+              style={{
+                fontFamily: Fonts.display,
+                fontSize: 18,
+                color: '#FFFFFF',
+                letterSpacing: 0.2,
+              }}>
+              Get Started
             </ThemedText>
-          </View>
-        </View>
-        <View style={styles.feature}>
-          <View style={[styles.featureIcon, styles.featureIconSky]}>
-            <ThemedText style={styles.featureEmoji}>📋</ThemedText>
-          </View>
-          <View style={styles.featureText}>
-            <ThemedText style={styles.featureTitle}>Stay on top of bills</ThemedText>
-            <ThemedText style={styles.featureBody}>
-              Pico tracks your recurring bills automatically.
-            </ThemedText>
-          </View>
-        </View>
-        <View style={styles.feature}>
-          <View style={[styles.featureIcon, styles.featureIconBerry]}>
-            <ThemedText style={styles.featureEmoji}>🎯</ThemedText>
-          </View>
-          <View style={styles.featureText}>
-            <ThemedText style={styles.featureTitle}>Save without the effort</ThemedText>
-            <ThemedText style={styles.featureBody}>
-              Small daily wins add up to big goals.
-            </ThemedText>
-          </View>
-        </View>
-      </View>
-    </OnboardingLayout>
+          </Pressable>
+
+          <ThemedText
+            style={{
+              textAlign: 'center',
+              color: 'rgba(255,255,255,0.45)',
+              fontSize: 13,
+              fontFamily: Fonts.body,
+              marginTop: 4,
+            }}>
+            Takes less than 2 minutes
+          </ThemedText>
+        </Animated.View>
+      </SafeAreaView>
+    </View>
   );
 }
 
