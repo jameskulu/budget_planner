@@ -15,6 +15,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { TextField } from '@/components/ui/text-field';
 import { Fonts, type PaletteType } from '@/constants/theme';
+import { trackAffordCheck, trackAffordLogPurchase } from '@/lib/analytics';
 import { canAfford, type AffordVerdict } from '@/lib/budget';
 import { categorize } from '@/lib/categories';
 import { parseAmountOnly } from '@/lib/parser';
@@ -59,18 +60,21 @@ export default function AskScreen() {
     setError(null);
     setLogged(false);
     setCategory(categorize(input, 'expense'));
-    setVerdict(canAfford(snapshot, amount, currency.symbol));
+    const verdict = canAfford(snapshot, amount, currency.symbol);
+    trackAffordCheck(verdict.affordable, amount);
+    setVerdict(verdict);
   };
 
   const handleLogPurchase = () => {
     if (!verdict) return;
+    trackAffordLogPurchase(verdict.cost);
     addTransaction({
       type: 'expense',
       amount: verdict.cost,
       date: todayIso(),
       category,
       note: text.trim() || `Purchased for ${money(verdict.cost)}`,
-    });
+    }, 'ask');
     setLogged(true);
     setText('');
     setVerdict(null);

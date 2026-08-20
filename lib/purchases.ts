@@ -7,10 +7,19 @@ import Purchases, {
 } from 'react-native-purchases';
 import { Platform } from 'react-native';
 
+import { trackPurchase, trackRestore } from '@/lib/analytics';
+
 const API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY;
 
 /** The RevenueCat entitlement granted by any paid plan. */
 export const PREMIUM_ENTITLEMENT_ID = 'premium';
+
+/**
+ * Email of a Google Play review account that is granted premium access
+ * without a purchase, so reviewers can test the full app. Set it in .env
+ * as EXPO_PUBLIC_REVIEWER_EMAIL (or hardcode here for a single reviewer).
+ */
+export const REVIEWER_EMAIL = process.env.EXPO_PUBLIC_REVIEWER_EMAIL ?? '';
 
 /** True when running inside Expo Go, where RevenueCat can't really buy. */
 export const isExpoGo =
@@ -136,7 +145,10 @@ function hasAnyActiveAccess(info: CustomerInfo): boolean {
 }
 
 /** True when the current RevenueCat user already has an active entitlement. */
-export async function isPremium(): Promise<boolean> {
+export async function isPremium(email?: string | null): Promise<boolean> {
+  if (email && REVIEWER_EMAIL && email.toLowerCase() === REVIEWER_EMAIL.toLowerCase()) {
+    return true;
+  }
   if (await hasMockPremium()) return true;
   if (!isPurchasesConfigured) return false;
   try {
@@ -252,26 +264,36 @@ export type PurchaseOutcome =
 
 /** Purchase a package and report the result. */
 export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseOutcome> {
+  const plan: 'monthly' | 'yearly' =
+    /annual|yearly/i.test(pkg.identifier) || /annual|yearly/i.test(pkg.packageType) ? 'yearly' : 'monthly';
   // Expo Go / web / no key: simulate a successful purchase locally so the
   // trial flow can be tested without a real store.
   if (!canPurchase) {
+    trackPurchase('started', plan);
     await setMockPremium(true);
+    trackPurchase('completed', plan);
     return { status: 'purchased' };
   }
+  trackPurchase('started', plan);
   try {
     await Purchases.purchasePackage(pkg);
     const fresh = await Purchases.getCustomerInfo();
     const confirmed =
       hasAnyActiveAccess(fresh) ||
       fresh.activeSubscriptions.includes(pkg.product.identifier);
-    return confirmed
-      ? { status: 'purchased' }
-      : { status: 'error', message: 'Your purchase could not be confirmed. Try again.' };
+    if (confirmed) {
+      trackPurchase('completed', plan);
+      return { status: 'purchased' };
+    }
+    trackPurchase('failed', plan);
+    return { status: 'error', message: 'Your purchase could not be confirmed. Try again.' };
   } catch (e) {
     const code = (e as { code?: string })?.code;
     if (code === '1' /* PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR */) {
+      trackPurchase('cancelled', plan);
       return { status: 'cancelled' };
     }
+    trackPurchase('failed', plan);
     return {
       status: 'error',
       message:
@@ -287,11 +309,16 @@ export async function restorePurchases(): Promise<boolean> {
   if (!canPurchase) {
     // No real purchases in Expo Go/web — nothing to restore, but honor the
     // local mock flag if it was set.
-    return hasMockPremium();
+    const active = await hasMockPremium();
+    trackRestore(active);
+    return active;
   }
   try {
-    return hasAnyActiveAccess(await Purchases.restorePurchases());
+    const active = hasAnyActiveAccess(await Purchases.restorePurchases());
+    trackRestore(active);
+    return active;
   } catch {
+    trackRestore(false);
     return false;
   }
 }

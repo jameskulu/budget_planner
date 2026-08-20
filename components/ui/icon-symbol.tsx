@@ -22,6 +22,7 @@ const MAPPING = {
   'list.bullet.rectangle': 'list-alt',
   'mic.fill': 'mic',
   'person.fill': 'person',
+  'envelope.fill': 'email',
   'pencil': 'edit',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',

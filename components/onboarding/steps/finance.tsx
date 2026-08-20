@@ -53,7 +53,7 @@ export function IncomeStep({ value, update, next, back, symbol }: StepProps) {
     <OnboardingLayout
       title="How much do you usually get paid?"
       subtitle="Use the amount that actually reaches your account."
-      progress={4 / 16}
+      progress={4 / 20}
       onBack={back}
       footer={<PrimaryButton title="Continue" onPress={submit} />}>
       <ThemedText style={styles.formLabel}>Currency</ThemedText>
@@ -108,7 +108,7 @@ export function PaydayStep({ value, update, next, back }: StepProps) {
     <OnboardingLayout
       title="When's your next payday?"
       subtitle="Pico uses this to work out how much you can safely spend before your next paycheck."
-      progress={5 / 16}
+      progress={5 / 20}
       onBack={back}
       footer={<PrimaryButton title="Continue" onPress={next} disabled={!selected} />}>
       <DateSelector
@@ -176,7 +176,7 @@ export function BillsStep({ value, update, next, back, symbol }: StepProps) {
     <OnboardingLayout
       title="What bills do you need to cover?"
       subtitle="Add your regular expenses so Pico can protect them."
-      progress={6 / 16}
+      progress={6 / 20}
       onBack={back}
       footer={
         <View style={styles.footerStack}>
@@ -288,7 +288,7 @@ export function SavingsStep({ value, update, next, back, symbol }: StepProps) {
   return (
     <OnboardingLayout
       title="How much would you like to save?"
-      progress={7 / 16}
+      progress={7 / 20}
       onBack={back}
       footer={
         <View style={styles.footerStack}>

@@ -149,7 +149,7 @@ export function createDefaultOnboarding(): OnboardingState {
   };
 }
 
-export const ONBOARDING_STEP_COUNT = 18;
+export const ONBOARDING_STEP_COUNT = 20;
 
 export function formatNextPayday(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);

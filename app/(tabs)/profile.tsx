@@ -13,6 +13,15 @@ import { TextField } from '@/components/ui/text-field';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts, type PaletteType } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import {
+  trackBiometricToggled,
+  trackCurrencyChanged,
+  trackHapticsToggled,
+  trackNotificationPrefChanged,
+  trackRateApp,
+  trackReferFriend,
+  trackThemeChanged,
+} from '@/lib/analytics';
 import { CURRENCIES } from '@/lib/currency';
 import { formatDateIso } from '@/lib/format';
 import { useToast } from '@/components/toast';
@@ -80,7 +89,7 @@ export default function ProfileScreen() {
     let mounted = true;
     (async () => {
       const [isPro, sub, url] = await Promise.all([
-        isPremium(),
+        isPremium(user?.email),
         getSubscriptionDetails(),
         getManagementUrl(),
       ]);
@@ -96,7 +105,7 @@ export default function ProfileScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [user?.email]);
 
   const email = user?.email ?? 'guest';
   const name = user?.user_metadata?.full_name ?? email.split('@')[0] ?? 'Guest';
@@ -128,6 +137,7 @@ export default function ProfileScreen() {
   ];
 
   const togglePref = (key: keyof NotificationPrefs) => async (value: boolean) => {
+    trackNotificationPrefChanged(key, value);
     const next: NotificationPrefs = { ...notificationPrefs, [key]: value };
     setNotificationPrefs(next);
     if (value) {
@@ -141,12 +151,14 @@ export default function ProfileScreen() {
   };
 
   const changeAdvanceDays = async (days: number) => {
+    trackNotificationPrefChanged('billAdvanceDays', days);
     const next: NotificationPrefs = { ...notificationPrefs, billAdvanceDays: days };
     setNotificationPrefs(next);
     await syncNotifications(next, recurring);
   };
 
   const handleRateApp = async () => {
+    trackRateApp();
     if (await StoreReview.hasAction()) {
       await StoreReview.requestReview();
       return;
@@ -160,6 +172,7 @@ export default function ProfileScreen() {
   };
 
   const handleReferFriend = async () => {
+    trackReferFriend();
     const message =
       'Come budget with me on Pico! 🐾 Your friendly money buddy that makes saving easy. Try it: https://pico.app';
     try {
@@ -170,6 +183,7 @@ export default function ProfileScreen() {
   };
 
   const toggleBiometric = async (value: boolean) => {
+    trackBiometricToggled(value);
     if (value) {
       const [hardware, enrolled] = await Promise.all([
         LocalAuthentication.hasHardwareAsync(),
@@ -237,7 +251,7 @@ export default function ProfileScreen() {
     setSwitchingPlan(false);
     if (outcome.status === 'purchased') {
       const [isPro, sub, url] = await Promise.all([
-        isPremium(),
+        isPremium(user?.email),
         getSubscriptionDetails(),
         getManagementUrl(),
       ]);
@@ -364,7 +378,7 @@ export default function ProfileScreen() {
           ) : (
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/onboarding?step=14')}
+              onPress={() => router.push('/onboarding?step=17')}
               style={({ pressed }) => [styles.planButton, pressed && styles.aboutPressed]}>
               <ThemedText style={styles.planButtonText}>Upgrade to premium</ThemedText>
             </Pressable>
@@ -546,6 +560,7 @@ export default function ProfileScreen() {
                     accessibilityLabel={c.label}
                     onPress={() => {
                       setCurrency(c.code);
+                      trackCurrencyChanged(c.code);
                       setCurrencyOpen(false);
                     }}
                     style={({ pressed }) => [
@@ -577,7 +592,10 @@ export default function ProfileScreen() {
             </View>
             <Switch
               value={mode === 'dark'}
-              onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+              onValueChange={(v) => {
+                setMode(v ? 'dark' : 'light');
+                trackThemeChanged(v ? 'dark' : 'light');
+              }}
               trackColor={{ true: palette.skyDeep, false: palette.outline }}
               thumbColor={palette.surface}
             />
@@ -635,7 +653,10 @@ export default function ProfileScreen() {
             </View>
             <Switch
               value={hapticsEnabled}
-              onValueChange={setHapticsEnabled}
+              onValueChange={(v) => {
+                setHapticsEnabled(v);
+                trackHapticsToggled(v);
+              }}
               trackColor={{ true: palette.skyDeep, false: palette.outline }}
               thumbColor={palette.surface}
             />

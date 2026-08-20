@@ -364,8 +364,8 @@ function createStyles(palette: PaletteType) {
       fontFamily: 'Inter_600SemiBold',
     },
     safeSpendAmount: {
-      fontSize: 52,
-      lineHeight: 60,
+      fontSize: 42,
+      lineHeight: 48,
       fontFamily: Fonts.monoBold,
       color: palette.leafDeep,
       letterSpacing: -1,

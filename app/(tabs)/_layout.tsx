@@ -18,7 +18,7 @@ export default function TabLayout() {
 
   useEffect(() => {
     let mounted = true;
-    isPremium().then((active) => {
+    isPremium(user?.email).then((active) => {
       if (!mounted) return;
       setPremium(active);
       setPremiumChecked(true);
@@ -46,7 +46,7 @@ export default function TabLayout() {
   }
 
   if (!premium) {
-    return <Redirect href="/onboarding?step=14" />;
+    return <Redirect href="/onboarding?step=17" />;
   }
 
   return (

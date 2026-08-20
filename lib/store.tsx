@@ -11,6 +11,7 @@ import React, {
 import { AppState } from 'react-native';
 
 import { useAuth } from '@/lib/auth';
+import { trackNoteParsed, trackRecurringAdded, trackRecurringDeleted, trackTransactionAdded, trackTransactionDeleted } from '@/lib/analytics';
 import { computeBudget, type BudgetSnapshot } from '@/lib/budget';
 import { categorize } from '@/lib/categories';
 import { DEFAULT_CURRENCY_CODE, getCurrency, type Currency } from '@/lib/currency';
@@ -201,7 +202,7 @@ type StoreContextValue = {
   addRecurring: (item: Omit<RecurringItem, 'id'>) => void;
   deleteRecurring: (id: string) => void;
   addNote: (note: string) => ParseResult;
-  addTransaction: (parsed: ParsedTransaction) => string;
+  addTransaction: (parsed: ParsedTransaction, method?: 'note' | 'voice' | 'recurring' | 'ask') => string;
   deleteTransaction: (id: string) => void;
 };
 
@@ -583,10 +584,17 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   const addNote = useCallback(
     (note: string): ParseResult => {
       const result = parseNote(note);
+      trackNoteParsed(result.ok, result.ok ? { count: result.parsed.length } : { error: result.error });
       if (!result.ok || !user) return result;
 
       const rows = result.parsed.map((p) => ({ id: createUuid(), ...toRow(user.id, p) }));
       const locals = rows.map((r) => toTransaction(r));
+      for (const p of result.parsed) {
+        trackTransactionAdded(p.type === 'income' ? 'income' : 'expense', {
+          amount: p.amount,
+          method: 'note',
+        });
+      }
       // Optimistic: show the transactions immediately, even offline.
       setTransactions((prev) => [...locals, ...prev]);
 
@@ -612,11 +620,15 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addTransaction = useCallback(
-    (parsed: ParsedTransaction): string => {
+    (parsed: ParsedTransaction, method: 'note' | 'voice' | 'recurring' | 'ask' = 'note'): string => {
       if (!user) return '';
       const id = createUuid();
       const row: TxRow = { id, ...toRow(user.id, parsed) };
       const local: Transaction = { id, ...parsed };
+      trackTransactionAdded(parsed.type === 'income' ? 'income' : 'expense', {
+        amount: parsed.amount,
+        method,
+      });
       // Optimistic: show the transaction immediately, even offline.
       setTransactions((prev) => [local, ...prev]);
 
@@ -642,6 +654,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   );
 
   const deleteTransaction = useCallback((id: string) => {
+    trackTransactionDeleted();
     setTransactions((prev) => prev.filter((t) => t.id !== id));
     if (isSupabaseConfigured) {
       supabase
@@ -658,8 +671,9 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
     (item: Omit<RecurringItem, 'id'>) => {
       const id = createUuid();
       const full: RecurringItem = { ...item, id };
+      trackRecurringAdded(item.type);
       setRecurring((prev) => [...prev, full]);
-      addTransaction(transactionFromRecurring(full, currentMonthKey()));
+      addTransaction(transactionFromRecurring(full, currentMonthKey()), 'recurring');
       if (user) {
         AsyncStorage.setItem(lastGenKeyFor(user.id), currentMonthKey()).catch(() => {});
         if (isSupabaseConfigured) {
@@ -723,6 +737,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   const deleteRecurring = useCallback(
     (id: string) => {
       const item = recurring.find((r) => r.id === id);
+      trackRecurringDeleted(item?.type ?? 'unknown');
       setRecurring((prev) => prev.filter((r) => r.id !== id));
       if (!item || !user) return;
 
@@ -777,7 +792,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
       const last = await AsyncStorage.getItem(key);
       if (last === month) return;
       for (const item of recurring) {
-        addTransaction(transactionFromRecurring(item, month));
+        addTransaction(transactionFromRecurring(item, month), 'recurring');
       }
       await AsyncStorage.setItem(key, month).catch(() => {});
     })();

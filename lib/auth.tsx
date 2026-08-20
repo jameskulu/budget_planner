@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
 
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { trackAccountDeleted, trackAuthSignIn, trackAuthSignOut, trackAuthSignUp } from '@/lib/analytics';
 
 type AuthContextValue = {
   loading: boolean;
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError('Supabase is not configured yet. Add your keys to .env and restart.');
       return;
     }
+    trackAuthSignIn(provider);
     try {
       if (Platform.OS === 'web') {
         const { error: err } = await supabase.auth.signInWithOAuth({ provider });
@@ -78,7 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: { redirectTo, skipBrowserRedirect: true },
       });
       if (err) throw err;
-      if (!data.url) return;
+      if (!data.url) {
+        setError('Google sign-in could not start. Check your OAuth configuration.');
+        return;
+      }
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
       if (result.type === 'success' && result.url) {
@@ -107,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
+        trackAuthSignIn('email');
         return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not sign in with email.');
@@ -130,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           options: { data: { full_name: name } },
         });
         if (err) throw err;
+        trackAuthSignUp('email');
         // When email confirmation is enabled, no session is returned yet.
         return Boolean(data.session);
       } catch (e) {
@@ -148,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       await supabase.auth.signInAnonymously();
+      trackAuthSignIn('guest');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign in as a guest.');
     }
@@ -170,6 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null);
+    trackAuthSignOut();
     try {
       await supabase.auth.signOut();
     } catch (e) {
@@ -179,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = useCallback(async () => {
     setError(null);
+    trackAccountDeleted();
     try {
       const { error } = await supabase.rpc('delete_my_account');
       if (error) throw error;

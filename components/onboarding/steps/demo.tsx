@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { DonutChart } from '@/components/donut-chart';
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout';
 import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TextField } from '@/components/ui/text-field';
 import { Fonts, type PaletteType } from '@/constants/theme';
 import { useAppTheme } from '@/lib/theme';
@@ -12,6 +14,29 @@ import type { OnboardingState } from '@/lib/onboarding';
 import { parseAmountOnly, parseNote } from '@/lib/parser';
 import { canAffordPurchase, computeSafeToSpend, daysUntil, type SafeSpendResult } from '@/lib/safe-spend';
 import type { StepProps } from '@/components/onboarding/steps/welcome';
+
+type SRModule = (typeof import('expo-speech-recognition'))['ExpoSpeechRecognitionModule'];
+
+let cachedSR: SRModule | null | undefined;
+
+/**
+ * Loaded lazily so Node static rendering and unsupported platforms
+ * never execute the speech-recognition module.
+ */
+async function loadSR(): Promise<SRModule | null> {
+  if (cachedSR !== undefined) return cachedSR;
+  if (Platform.OS === 'web' && typeof window === 'undefined') {
+    cachedSR = null;
+    return null;
+  }
+  try {
+    const mod = await import('expo-speech-recognition');
+    cachedSR = mod.ExpoSpeechRecognitionModule;
+  } catch {
+    cachedSR = null;
+  }
+  return cachedSR;
+}
 
 type SafeInput = {
   income: number;
@@ -152,7 +177,7 @@ export function TrackStep({
     <OnboardingLayout
       title="Just write what you spent ✍️"
       subtitle="No forms. No spreadsheets."
-      progress={9 / 16}
+      progress={10 / 20}
       onBack={back}
       footer={
         <View style={styles.footerStack}>
@@ -204,6 +229,226 @@ export function TrackStep({
   );
 }
 
+/**
+ * The flagship feature: tap the mic, say what you spent, and Pico logs it.
+ * Falls back to a simulated transcript when speech recognition isn't
+ * available (e.g. Expo Go or web).
+ */
+export function VoiceStep({
+  value,
+  update,
+  next,
+  back,
+  money,
+  symbol,
+  addTransaction,
+}: StepProps & { addTransaction: (parsed: NonNullable<OnboardingState['demo']['parsed']>) => string }) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+  const [listening, setListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pulse = useRef(new Animated.Value(0)).current;
+  const moduleRef = useRef<SRModule | null>(null);
+  const disposedRef = useRef(false);
+
+  const parsed = useMemo(() => (transcript ? parseNote(transcript) : null), [transcript]);
+  const first = parsed?.ok ? parsed.parsed[0] : null;
+
+  useEffect(() => {
+    disposedRef.current = false;
+    return () => {
+      disposedRef.current = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!listening) return;
+    const anim = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+    );
+    pulse.setValue(0);
+    anim.start();
+    return () => anim.stop();
+  }, [listening, pulse]);
+
+  const handleTranscript = useCallback(
+    (text: string) => {
+      if (disposedRef.current) return;
+      setTranscript(text);
+      setListening(false);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let subs: { remove(): void }[] = [];
+    (async () => {
+      const module = await loadSR();
+      if (disposedRef.current || !module) return;
+      moduleRef.current = module;
+      const onResult = (ev: { isFinal?: boolean; results?: { transcript?: string }[] }) => {
+        if (!ev.isFinal) return;
+        const t = ev.results?.[0]?.transcript ?? '';
+        if (!t.trim()) return;
+        handleTranscript(t);
+      };
+      const onError = (ev: { error?: string }) => {
+        setListening(false);
+        if (ev.error === 'no-speech') setError("I didn't hear anything — try again.");
+        else if (ev.error === 'not-allowed') setError('Microphone permission is off.');
+        else setError('Dictation stopped.');
+      };
+      const onEnd = () => setListening(false);
+      subs.push(module.addListener('result', onResult));
+      subs.push(module.addListener('error', onError));
+      subs.push(module.addListener('end', onEnd));
+    })();
+    return () => {
+      subs.forEach((s) => s.remove());
+    };
+  }, [handleTranscript]);
+
+  const listen = async () => {
+    setError(null);
+    const module = await loadSR();
+    moduleRef.current = module;
+    if (!module) {
+      // No speech recognition here (Expo Go / web): simulate a live demo.
+      setTranscript('');
+      setListening(true);
+      setTimeout(() => {
+        if (disposedRef.current) return;
+        setListening(false);
+        handleTranscript(`Spent ${symbol}25 on lunch`);
+      }, 1600);
+      return;
+    }
+    try {
+      const perm = await module.requestPermissionsAsync();
+      if (perm && !perm.granted) {
+        setError('Microphone permission is off.');
+        return;
+      }
+    } catch {}
+    setTranscript('');
+    setListening(true);
+    try {
+      module.start({
+        lang: 'en-US',
+        interimResults: true,
+        continuous: false,
+        addsPunctuation: true,
+        contextualStrings: ['spent', 'bought', 'paid', 'salary', 'received', 'groceries', 'coffee', 'rent'],
+      });
+    } catch {
+      setListening(false);
+      setError('Could not start dictation.');
+    }
+  };
+
+  const stop = () => {
+    setListening(false);
+    try {
+      moduleRef.current?.stop();
+    } catch {}
+  };
+
+  const handleAdd = () => {
+    if (!first) return;
+    update({ demo: { parsed: first, logged: false } });
+    addTransaction(first);
+    setConfirmed(true);
+  };
+
+  const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] });
+  const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] });
+
+  return (
+    <OnboardingLayout
+      title="Or just say it 🎤"
+      subtitle="Speak your spending — Pico logs it instantly."
+      progress={11 / 20}
+      onBack={back}
+      footer={
+        <View style={styles.footerStack}>
+          {confirmed ? (
+            <PrimaryButton title="Continue" onPress={next} />
+          ) : first ? (
+            <>
+              <PrimaryButton title="Add transaction" variant="leaf" onPress={handleAdd} />
+              <Pressable accessibilityRole="button" onPress={listen}>
+                <ThemedText style={styles.skip}>Listen again</ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable accessibilityRole="button" onPress={next}>
+              <ThemedText style={styles.skip}>Skip this demo</ThemedText>
+            </Pressable>
+          )}
+        </View>
+      }>
+      <View style={styles.voiceWrap}>
+        <View style={styles.voiceMicArea}>
+          {listening ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.voiceRing,
+                { transform: [{ scale: ringScale }], opacity: ringOpacity },
+              ]}
+            />
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={listening ? 'Stop listening' : 'Record spending or income'}
+            onPress={listening ? stop : () => void listen()}
+            style={({ pressed }) => [
+              styles.voiceMic,
+              listening && styles.voiceMicListening,
+              pressed && styles.pressed,
+            ]}>
+            <IconSymbol name="mic.fill" size={38} color={listening ? '#FFFFFF' : palette.surface} />
+          </Pressable>
+        </View>
+        {listening ? (
+          <ThemedText style={styles.voiceHint}>Listening… say it!</ThemedText>
+        ) : error ? (
+          <ThemedText style={styles.voiceError}>{error}</ThemedText>
+        ) : first ? (
+          <ThemedText style={styles.voiceHint}>Say something like “spent {symbol}25 on lunch”</ThemedText>
+        ) : (
+          <ThemedText style={styles.voiceHint}>Tap the mic and say what you spent</ThemedText>
+        )}
+      </View>
+
+      {first ? (
+        <View style={styles.resultCard}>
+          <View style={styles.resultRow}>
+            <View style={styles.resultDot} />
+            <View style={styles.resultText}>
+              <ThemedText style={styles.resultTitle}>{first.note}</ThemedText>
+              <ThemedText style={styles.resultMeta}>{first.category}</ThemedText>
+            </View>
+            <ThemedText style={styles.resultAmount}>
+              {first.type === 'income' ? '+' : '-'}
+              {money(first.amount)}
+            </ThemedText>
+          </View>
+          <ThemedText style={styles.resultFound}>
+            I heard you {parsed && parsed.ok && parsed.parsed.length !== 1 ? `— ${parsed.parsed.length} transactions` : ''}
+          </ThemedText>
+        </View>
+      ) : null}
+    </OnboardingLayout>
+  );
+}
+
 export function AdjustStep({ value, next, back, money }: StepProps) {
   const { palette } = useAppTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
@@ -220,20 +465,32 @@ export function AdjustStep({ value, next, back, money }: StepProps) {
   return (
     <OnboardingLayout
       title="Updated automatically 🔄"
-      progress={10 / 16}
+      progress={12 / 20}
       onBack={back}
       footer={<PrimaryButton title="Continue" onPress={next} />}>
       <View style={styles.beforeAfter}>
         <View style={styles.baCard}>
           <ThemedText style={styles.baLabel}>Before</ThemedText>
-          <ThemedText style={styles.baValue}>{money(whole(before.dailyAllowance))}/day</ThemedText>
+          <ThemedText
+            style={styles.baValue}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}>
+            {money(whole(before.dailyAllowance))}/day
+          </ThemedText>
         </View>
         <View style={styles.baArrow}>
           <ThemedText style={styles.baArrowText}>→</ThemedText>
         </View>
         <View style={[styles.baCard, styles.baCardAfter]}>
           <ThemedText style={styles.baLabel}>After spending {money(demoAmount)}</ThemedText>
-          <ThemedText style={styles.baValue}>{money(whole(after.dailyAllowance))}/day</ThemedText>
+          <ThemedText
+            style={styles.baValue}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}>
+            {money(whole(after.dailyAllowance))}/day
+          </ThemedText>
         </View>
       </View>
       <ThemedText style={styles.adjustBody}>
@@ -270,7 +527,7 @@ export function AffordStep({ value, next, back, money, symbol }: StepProps) {
     <OnboardingLayout
       title="Thinking about buying something?"
       subtitle="Ask Pico before you spend."
-      progress={11 / 16}
+      progress={13 / 20}
       onBack={back}
       footer={
         <View style={styles.footerStack}>
@@ -340,7 +597,7 @@ export function SummaryStep({ value, next, back, money }: StepProps) {
   return (
     <OnboardingLayout
       title="Here's your money snapshot"
-      progress={12 / 16}
+      progress={14 / 20}
       onBack={back}
       footer={<PrimaryButton title="Continue" onPress={next} />}>
       <View style={styles.summaryCard}>
@@ -364,6 +621,60 @@ export function SummaryStep({ value, next, back, money }: StepProps) {
           </View>
         ) : null}
       </View>
+    </OnboardingLayout>
+  );
+}
+
+/**
+ * A preview of the Insights experience: where the money goes at a glance.
+ * Uses the plan the user just built so it feels personal.
+ */
+export function InsightsStep({ value, next, back, money }: StepProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+  const result = useMemo(
+    () => computeSafeToSpend(safeInput(value, 0) as Parameters<typeof computeSafeToSpend>[0]),
+    [value],
+  );
+
+  const slices = [
+    { value: result.billsDue, color: palette.coral },
+    { value: result.savingsSlice, color: palette.skyDeep },
+    { value: Math.max(0, result.availableForPeriod), color: palette.leaf },
+  ].filter((s) => s.value > 0);
+
+  const rows = [
+    { label: 'Bills & investments', amount: result.billsDue, color: palette.coral },
+    { label: 'Savings goal', amount: result.savingsSlice, color: palette.skyDeep },
+    { label: 'Available to spend', amount: Math.max(0, result.availableForPeriod), color: palette.leaf, highlight: true },
+  ];
+
+  return (
+    <OnboardingLayout
+      title="See where your money goes 📊"
+      subtitle="Insights update automatically as you spend."
+      progress={15 / 20}
+      onBack={back}
+      footer={<PrimaryButton title="Continue" onPress={next} />}>
+      <DonutChart
+        slices={slices}
+        centerLabel="this period"
+        centerValue={money(whole(result.availableForPeriod))}
+      />
+      <View style={styles.insightsCard}>
+        {rows.map((row) => (
+          <View key={row.label} style={styles.insightsRow}>
+            <View style={[styles.insightsDot, { backgroundColor: row.color }]} />
+            <ThemedText style={styles.insightsLabel}>{row.label}</ThemedText>
+            <ThemedText style={[styles.insightsValue, row.highlight && styles.insightsValueHighlight]}>
+              {money(whole(row.amount))}
+            </ThemedText>
+          </View>
+        ))}
+      </View>
+      <ThemedText style={styles.insightsNote}>
+        Track spending by category, see trends, and stay on track — without lifting a finger.
+      </ThemedText>
     </OnboardingLayout>
   );
 }
@@ -549,9 +860,10 @@ function createStyles(palette: PaletteType) {
     },
     baValue: {
       fontFamily: Fonts.monoBold,
-      fontSize: 26,
-      lineHeight: 32,
+      fontSize: 22,
+      lineHeight: 26,
       color: palette.ink,
+      flexShrink: 1,
     },
     baArrow: {
       alignItems: 'center',
@@ -632,6 +944,104 @@ function createStyles(palette: PaletteType) {
     summaryValueHighlight: {
       color: palette.berry,
       fontSize: 20,
+    },
+    voiceWrap: {
+      alignItems: 'center',
+      gap: 14,
+      paddingTop: 24,
+    },
+    voiceMicArea: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    voiceMic: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: palette.skyDeep,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: palette.ink,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    voiceMicListening: {
+      backgroundColor: palette.coral,
+    },
+    voiceRing: {
+      position: 'absolute',
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor: palette.coral,
+    },
+    pressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.96 }],
+    },
+    voiceHint: {
+      textAlign: 'center',
+      color: palette.inkMuted,
+      fontSize: 16,
+      lineHeight: 22,
+      maxWidth: 320,
+    },
+    voiceError: {
+      textAlign: 'center',
+      color: palette.coral,
+      fontSize: 16,
+      lineHeight: 22,
+      maxWidth: 320,
+    },
+    insightsCard: {
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: palette.outline,
+      backgroundColor: palette.surface,
+      padding: 18,
+      gap: 4,
+    },
+    insightsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.outline,
+    },
+    insightsDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    insightsLabel: {
+      flex: 1,
+      fontSize: 16,
+      lineHeight: 22,
+      color: palette.inkMuted,
+    },
+    insightsValue: {
+      fontFamily: Fonts.monoBold,
+      fontSize: 17,
+      lineHeight: 22,
+      color: palette.ink,
+    },
+    insightsValueHighlight: {
+      color: palette.berry,
+      fontSize: 20,
+    },
+    insightsNote: {
+      color: palette.inkSubtle,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: 'center',
+      maxWidth: 340,
+      alignSelf: 'center',
     },
   });
 }

@@ -181,7 +181,10 @@ export default function PlanScreen() {
           <Card style={styles.estimateCard}>
             <ThemedText style={styles.estimateLabel}>You could save</ThemedText>
             <ThemedText
-              style={[styles.estimateValue, { color: canSave ? palette.leafDeep : palette.coral }]}>
+              style={[styles.estimateValue, { color: canSave ? palette.leafDeep : palette.coral }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}>
               {money(monthly.savingsEstimate)}
               <ThemedText style={styles.estimatePerMonth}> / month</ThemedText>
             </ThemedText>
@@ -265,9 +268,10 @@ function createStyles(palette: PaletteType) {
   },
   estimateValue: {
     fontFamily: Fonts.monoBold,
-    fontSize: 40,
-    lineHeight: 48,
+    fontSize: 34,
+    lineHeight: 40,
     letterSpacing: -1,
+    flexShrink: 1,
   },
   estimatePerMonth: {
     fontFamily: Fonts.body,

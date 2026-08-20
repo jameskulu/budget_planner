@@ -229,7 +229,7 @@ export function WelcomeStep({ next }: StepProps) {
               textAlign: 'center',
               letterSpacing: -1,
             }}>
-            Pico
+            Pico Money
           </ThemedText>
 
           {/* Tagline */}
@@ -287,7 +287,7 @@ export function ProblemStep({ value, update, next, back }: StepProps) {
     <OnboardingLayout
       title="What sounds most like you?"
       subtitle="Everyone manages money differently."
-      progress={1 / 16}
+      progress={1 / 20}
       onBack={back}
       footer={<PrimaryButton title="Continue" onPress={next} disabled={!value.problem} />}>
       {PROBLEMS.map((p) => (
@@ -311,7 +311,7 @@ export function GoalStep({ value, update, next, back }: StepProps) {
   return (
     <OnboardingLayout
       title="What do you want Pico to help you with?"
-      progress={2 / 16}
+      progress={2 / 20}
       onBack={back}
       footer={<PrimaryButton title="Continue" onPress={next} disabled={!value.goal} />}>
       <View style={styles.grid}>
@@ -335,7 +335,7 @@ export function PayFrequencyStep({ value, update, next, back }: StepProps) {
     <OnboardingLayout
       title="How often do you get paid?"
       subtitle="Your pay schedule helps Pico calculate how much you can safely spend."
-      progress={3 / 16}
+      progress={3 / 20}
       onBack={back}
       footer={<PrimaryButton title="Continue" onPress={next} disabled={!value.payFrequency} />}>
       {PAY_FREQUENCIES.map((f) => (

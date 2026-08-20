@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
+  View,
   type PressableProps,
   type ViewStyle,
 } from 'react-native';
@@ -20,6 +21,8 @@ type PrimaryButtonProps = PressableProps & {
   style?: ViewStyle;
   /** Show a spinner and swallow presses while busy. */
   loading?: boolean;
+  /** Optional leading icon rendered before the title. */
+  icon?: ReactNode;
 };
 
 /**
@@ -32,6 +35,7 @@ export function PrimaryButton({
   big = false,
   style,
   loading = false,
+  icon,
   disabled,
   onPress,
   ...rest
@@ -65,13 +69,16 @@ export function PrimaryButton({
       ]}
       {...rest}>
       {({ pressed }) => (
-        <ThemedText style={[styles.label, pressed && styles.labelPressed]}>
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
-          ) : (
-            title
-          )}
-        </ThemedText>
+        <View style={styles.labelRow}>
+          {icon}
+          <ThemedText style={[styles.label, pressed && styles.labelPressed]}>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
+            ) : (
+              title
+            )}
+          </ThemedText>
+        </View>
       )}
     </Pressable>
   );
@@ -102,6 +109,12 @@ function createStyles(palette: PaletteType) {
       fontFamily: Fonts.bodyBold,
       fontSize: 20,
       lineHeight: 28,
+    },
+    labelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
     },
     labelPressed: {
       opacity: 0.95,

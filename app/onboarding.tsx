@@ -2,11 +2,12 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, View } from 'react-native';
 
-import { AhaStep, AffordStep, AdjustStep, CalculatingStep, SummaryStep, TrackStep } from '@/components/onboarding/steps/demo';
+import { AhaStep, AffordStep, AdjustStep, CalculatingStep, InsightsStep, SummaryStep, TrackStep, VoiceStep } from '@/components/onboarding/steps/demo';
 import { BillsStep, IncomeStep, PaydayStep, SavingsStep } from '@/components/onboarding/steps/finance';
 import { AccountStep, DoneStep, NotifyStep, PaywallStep } from '@/components/onboarding/steps/finish';
 import { GoalStep, PayFrequencyStep, ProblemStep, WelcomeStep } from '@/components/onboarding/steps/welcome';
 import { useAuth } from '@/lib/auth';
+import { trackOnboardingCompleted, trackOnboardingStep } from '@/lib/analytics';
 import { ONBOARDING_STEP_COUNT, type OnboardingPlan, type PlanPeriod } from '@/lib/onboarding';
 import { useBudget } from '@/lib/store';
 import { useAppTheme } from '@/lib/theme';
@@ -35,6 +36,7 @@ export default function OnboardingScreen() {
 
   const next = useCallback(() => {
     updateOnboarding({ step: Math.min(onboarding.step + 1, ONBOARDING_STEP_COUNT - 1) });
+    trackOnboardingStep(Math.min(onboarding.step + 1, ONBOARDING_STEP_COUNT - 1));
   }, [onboarding.step, updateOnboarding]);
 
   const back = useCallback(() => {
@@ -55,10 +57,12 @@ export default function OnboardingScreen() {
   }, [updateOnboarding]);
 
   const finish = useCallback(() => {
+    trackOnboardingCompleted();
     updateOnboarding({ completed: true });
   }, [updateOnboarding]);
 
   const goDashboard = useCallback(() => {
+    trackOnboardingCompleted();
     updateOnboarding({ completed: true });
     router.replace('/(tabs)');
   }, [updateOnboarding]);
@@ -175,17 +179,21 @@ export default function OnboardingScreen() {
       case 10:
         return <TrackStep {...stepProps} />;
       case 11:
-        return <AdjustStep {...stepProps} />;
+        return <VoiceStep {...stepProps} />;
       case 12:
-        return <AffordStep {...stepProps} />;
+        return <AdjustStep {...stepProps} />;
       case 13:
-        return <SummaryStep {...stepProps} />;
+        return <AffordStep {...stepProps} />;
       case 14:
-        return <PaywallStep {...stepProps} />;
+        return <SummaryStep {...stepProps} />;
       case 15:
-        return <NotifyStep {...stepProps} />;
+        return <InsightsStep {...stepProps} />;
       case 16:
         return <AccountStep {...stepProps} />;
+      case 17:
+        return <PaywallStep {...stepProps} />;
+      case 18:
+        return <NotifyStep {...stepProps} />;
       default:
         return <DoneStep {...stepProps} />;
     }

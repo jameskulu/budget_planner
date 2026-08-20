@@ -38,7 +38,7 @@ export default function EmailAuthScreen() {
       const sessionCreated = await signUpWithEmail(name.trim(), email.trim(), password);
       setBusy(false);
       if (!sessionCreated) {
-        setLocalError('Check your inbox — confirm your email to finish signing up.');
+        setLocalError('Your account is ready — log in to continue.');
       }
       return;
     }

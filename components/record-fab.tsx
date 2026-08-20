@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts, type PaletteType } from '@/constants/theme';
+import { trackVoiceError, trackVoiceStarted } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { useAppTheme } from '@/lib/theme';
 import { parseNote } from '@/lib/parser';
@@ -84,7 +85,7 @@ export function RecordFab() {
         return;
       }
       const count = result.parsed.length;
-      const added = result.parsed.filter((p) => addTransaction(p)).length;
+      const added = result.parsed.filter((p) => addTransaction(p, 'voice')).length;
       if (added === 0) {
         // Guest (pre-auth) fallback: addNote keeps the app usable.
         addNote(transcript);
@@ -143,9 +144,18 @@ export function RecordFab() {
         setListening(false);
         clearSilence();
         let message = 'Dictation stopped.';
-        if (ev.error === 'not-allowed') message = 'Microphone permission is off.';
-        else if (ev.error === 'no-speech') message = "I didn't hear anything — try again.";
-        else if (ev.error === 'network') message = 'Dictation needs the network (or localhost).';
+        if (ev.error === 'not-allowed') {
+          message = 'Microphone permission is off.';
+          trackVoiceError('permission-denied');
+        } else if (ev.error === 'no-speech') {
+          message = "I didn't hear anything — try again.";
+          trackVoiceError('no-speech');
+        } else if (ev.error === 'network') {
+          message = 'Dictation needs the network (or localhost).';
+          trackVoiceError('network');
+        } else {
+          trackVoiceError(ev.error ?? 'unknown');
+        }
         showStatus(message, 'error');
       };
       const onEnd = () => {
@@ -186,6 +196,7 @@ export function RecordFab() {
     setStatus(null);
     stopSilenceTimer.current();
     setListening(true);
+    trackVoiceStarted();
     showStatus('Listening… say it!', 'info');
     try {
       const perm = await module.requestPermissionsAsync();

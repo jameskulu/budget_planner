@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout';
 import { Pico } from '@/components/pico';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
+import { GoogleLogo } from '@/components/google-logo';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts, type PaletteType } from '@/constants/theme';
 import { useAppTheme } from '@/lib/theme';
 import { payFrequencyLabel, type OnboardingPlan, type PlanPeriod } from '@/lib/onboarding';
@@ -17,6 +20,7 @@ import {
   setMockPremium,
   type AvailablePlans,
 } from '@/lib/purchases';
+import { trackPaywallViewed, trackTrialStarted } from '@/lib/analytics';
 import { requestNotificationPermission, syncNotifications, type NotificationPrefs } from '@/lib/notifications';
 import type { RecurringItem } from '@/lib/recurring';
 import type { StepProps } from '@/components/onboarding/steps/welcome';
@@ -47,7 +51,7 @@ const BENEFITS = [
   'Automatic spending adjustments',
 ];
 
-export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: FinishStepProps) {
+export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next, user }: FinishStepProps) {
   const { palette } = useAppTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
   const [available, setAvailable] = useState<AvailablePlans>({ monthly: null, annual: null });
@@ -59,12 +63,13 @@ export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: F
   const [checkingPremium, setCheckingPremium] = useState(true);
 
   useEffect(() => {
+    trackPaywallViewed();
     let mounted = true;
     getAvailablePlans().then((plans) => {
       if (mounted) setAvailable(plans);
     });
     // Returning subscriber? Auto-detect so they're never asked to buy again.
-    isPremium().then((active) => {
+    isPremium(user?.email).then((active) => {
       if (mounted) {
         setAlreadyPremium(active);
         setCheckingPremium(false);
@@ -73,7 +78,7 @@ export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: F
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [user?.email]);
 
   const activePackage = planPeriod === 'monthly' ? available.monthly : available.annual;
   const monthly = available.monthly?.product;
@@ -86,6 +91,7 @@ export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: F
       const outcome = await purchasePackage(activePackage);
       setPurchasing(false);
       if (outcome.status === 'purchased') {
+        trackTrialStarted();
         choosePlan('trial');
         next();
         return;
@@ -96,6 +102,7 @@ export function PaywallStep({ plan, planPeriod, choosePlan, setPeriod, next }: F
     }
     // Mock / preview mode (Expo Go, no keys): simulate the trial locally.
     await setMockPremium(true);
+    trackTrialStarted();
     choosePlan('trial');
     next();
   };
@@ -328,14 +335,22 @@ export function AccountStep({
           <View style={styles.footerStack}>
             <PrimaryButton
               title="Continue with Google"
+              icon={<GoogleLogo size={22} />}
               onPress={() => {
                 void onGoogle();
               }}
               loading={signingIn}
             />
-            <Pressable accessibilityRole="button" onPress={onGuest}>
-              <ThemedText style={styles.skip}>Continue as guest (test)</ThemedText>
-            </Pressable>
+            <PrimaryButton
+              title="Continue with Email"
+              variant="leaf"
+              icon={
+                <View style={styles.footerIcon}>
+                  <IconSymbol name="envelope.fill" size={18} color="#FFFFFF" />
+                </View>
+              }
+              onPress={() => router.push('/(auth)/email')}
+            />
           </View>
         )
       }>
@@ -389,6 +404,11 @@ function createStyles(palette: PaletteType) {
   return StyleSheet.create({
     footerStack: {
       gap: 6,
+    },
+    footerIcon: {
+      width: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     picoPaywallHeader: {
       paddingBottom: 8,

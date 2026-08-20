@@ -1,0 +1,27 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://klmifntilnmsohdvgyos.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsbWlmbnRpbG5tc29oZHZneW9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MzkxOTQsImV4cCI6MjEwMjExNTE5NH0.QS7dig4u2Fx3WJiBitTqR6IVwL-6RVA8aOQTFo_Z8iw",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY": "test_GucYFmeSpRqOpMNhYfINgkjCGWe",
+        "EXPO_PUBLIC_REVIEWER_EMAIL": "play.review@gmail.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

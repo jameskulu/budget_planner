@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "budget_planner",
+    "name": "Pico Money",
     "slug": "budget_planner",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,18 +10,28 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "appStoreUrl": "https://apps.apple.com/app/budget-planner-pico/id0000000000"
+      "bundleIdentifier": "com.budgetplanner.pico",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "appStoreUrl": "https://apps.apple.com/app/budget-planner-pico/id0000000000",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone to log your money by voice."
+      }
     },
     "android": {
+      "package": "com.budgetplanner.pico",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#774EF6",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "playStoreUrl": "https://play.google.com/store/apps/details?id=com.budgetplanner.pico",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -42,13 +52,20 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#774EF6"
         }
-      ]
+      ],
+      "@react-native-firebase/app"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "aac4ffa6-c441-4df7-a9dc-574702780c7f"
+      }
     }
   }
 }
